@@ -5,8 +5,11 @@ function Constants() {
 	this.kWhInkJ = 3600; // 1 kWh is 3600 kJ
 
 	this.heatingDemandProfileHelsinkiKaisaniemiReferenceYear = heatingDemandProfileHelsinkiKaisaniemiReferenceYear;
-	this.simulatedSpaceHeatingDemandOfResidentialReferenceBuilding2014 = simulatedSpaceHeatingDemandOfResidentialReferenceBuilding2014;
-	this.simulatedSpaceHeatingDemandOfResidentialReferenceBuilding2015 = simulatedSpaceHeatingDemandOfResidentialReferenceBuilding2015;
-	this.simulatedSpaceHeatingDemandOfResidentialReferenceBuilding2016 = simulatedSpaceHeatingDemandOfResidentialReferenceBuilding2016;
-	this.simulatedSpaceHeatingDemandOfResidentialReferenceBuilding2017 = simulatedSpaceHeatingDemandOfResidentialReferenceBuilding2017;
+	this.simulatedSpaceHeatingDemandOfResidentialReferenceBuildingFrom2013To2014 = simulatedSpaceHeatingDemandOfResidentialReferenceBuildingFrom2013To2014;
+	this.simulatedSpaceHeatingDemandOfResidentialReferenceBuildingFrom2015To2017 = simulatedSpaceHeatingDemandOfResidentialReferenceBuildingFrom2015To2017;
+	this.referenceYearCalendar = new ReferenceYearCalendar();
+	this.daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+	this.domesticElectricityConsumptionWeekValues = domesticElectricityConsumptionWeekValues;
+	this.domesticElectricityConsumptionHourValues = domesticElectricityConsumptionHourValues;
+	this.vantaaReferenceYearTotalIrradiationOnHorizontalSurface = vantaaReferenceYearTotalIrradiationOnHorizontalSurface;
 }

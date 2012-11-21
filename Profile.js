@@ -31,10 +31,10 @@ function Profile() {
 		var sum = 0.0;
 		var dayFrom = 1;
 		var dayTo;
-		var daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 		var monthIndex;
 		var dayIndex;
-		for( monthIndex=0;monthIndex<(month-1);monthIndex++) {
+		var daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+		for(monthIndex=0;monthIndex<(month-1);monthIndex++) {
 			dayFrom += daysInMonth[monthIndex]
 		}
 		dayTo = dayFrom + daysInMonth[month-1];
@@ -53,10 +53,10 @@ function Profile() {
 
 	this.period = period;
 	function period(periodStartYear, periodStartMonth, periodEndYear, periodEndMonth) {
-	var year = periodStartYear;
-	var month = periodStartMonth;
-	var sum = 0.0;
-		while( year <= periodEndYear && ( year < periodEndYear || month <= periodEndMonth) ) {
+		var year = periodStartYear;
+		var month = periodStartMonth;
+		var sum = 0.0;
+		while( +year <= +periodEndYear && ( (+year < +periodEndYear) || (+month <= +periodEndMonth) ) ) {
 			sum += this.month(month);
 			month++;
 			if( month > 12 ) {
@@ -65,5 +65,75 @@ function Profile() {
 			}
 		}
 		return sum;
+	}
+
+	this.hourOfDayAvgValueInMonth = hourOfDayAvgValueInMonth;
+	function hourOfDayAvgValueInMonth(hourOfDay,month,constants) {
+		var monthIndex;
+		var dayFrom = 0;
+		var dayTo;
+		var dayIndex;
+		var hourOfYear = 0;
+		var sum = 0.0;
+		var n = 0;
+		for(monthIndex=0;monthIndex<(month-1);monthIndex++) {
+			dayFrom += constants.daysInMonth[monthIndex]
+		}
+		dayTo = dayFrom + constants.daysInMonth[month-1];
+		hourOfYear = dayFrom * 24;
+		for(dayIndex=dayFrom;dayIndex<dayTo;dayIndex++) {
+			sum += this.profile[hourOfYear+hourOfDay-1];
+			n++;
+			hourOfYear+=24;
+		}
+		return sum/n;
+	}
+
+	this.hourOfDayMaxValueInMonth = hourOfDayMaxValueInMonth;
+	function hourOfDayMaxValueInMonth(hourOfDay,month,constants) {
+		var monthIndex;
+		var dayFrom = 0;
+		var dayTo;
+		var dayIndex;
+		var hourOfYear = 0;
+		var max;
+		var n = 0;
+		for(monthIndex=0;monthIndex<(month-1);monthIndex++) {
+			dayFrom += constants.daysInMonth[monthIndex]
+		}
+		dayTo = dayFrom + constants.daysInMonth[month-1];
+		hourOfYear = dayFrom * 24;
+		max = this.profile[hourOfYear+hourOfDay-1];
+		for(dayIndex=dayFrom;dayIndex<dayTo;dayIndex++) {
+			if(this.profile[hourOfYear+hourOfDay-1] > max) {
+				max = this.profile[hourOfYear+hourOfDay-1];
+			}
+			hourOfYear+=24;
+		}
+		return max;
+	}
+
+	this.hourOfDayMinValueInMonth = hourOfDayMinValueInMonth;
+	function hourOfDayMinValueInMonth(hourOfDay,month,constants) {
+		var monthIndex;
+		var dayFrom = 0;
+		var dayTo;
+		var dayIndex;
+		var hourOfYear = 0;
+		var min;
+		var n = 0;
+		for(monthIndex=0;monthIndex<(month-1);monthIndex++) {
+			dayFrom += constants.daysInMonth[monthIndex]
+		}
+		dayTo = dayFrom + constants.daysInMonth[month-1];
+		hourOfYear = dayFrom * 24;
+		min = this.profile[hourOfYear+hourOfDay-1];
+		for(dayIndex=dayFrom;dayIndex<dayTo;dayIndex++) {
+			if(this.profile[hourOfYear+hourOfDay-1] < min) {
+				min = this.profile[hourOfYear+hourOfDay-1];
+			}
+			hourOfYear+=24;
+		}
+		return min;
 	}
 }

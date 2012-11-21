@@ -1,12 +1,36 @@
-function SolarElectricityProductionProfile( SolarPanel, constants ) {
-	
+function SolarElectricityProductionProfile( solarInstallation, constants ) {
 	var profile = new Profile();
 	var hour;
+	var electricityProductionTotal;
+	electricityProductionTotal = InstallationAreaAvgIrradiance(solarInstallation,constants) * solarInstallation.photovoltaicArea * solarInstallation.photovoltaicPeakPowerFactor * solarInstallation.photovoltaicInstallationFactor;
+		for(hour=0;hour<8760;hour++) {
+			profile.profile[hour] = electricityProductionTotal * constants.vantaaReferenceYearTotalIrradiationOnHorizontalSurface[hour];
+		}
+	return profile;
+}
 
+function InstallationAreaAvgIrradiance(solarInstallation,constants) {
+	var installationAreaOnGoodRoof;
+	var installationAreaOnRemainingRoof;
+	var installationAreaTotal = solarInstallation.photovoltaicArea + solarInstallation.thermalArea;
+	if(installationAreaTotal > solarInstallation.roofArea) {
+		installationAreaTotal = solarInstallation.roofArea;
+	}
+	if(installationAreaTotal <= solarInstallation.roofGoodArea) {
+		installationAreaOnGoodRoof = installationAreaTotal;
+		installationAreaOnRemainingRoof = 0;
+	} else {
+		installationAreaOnGoodRoof = solarInstallation.roofGoodArea;
+		installationAreaOnRemainingRoof = installationAreaTotal - installationAreaOnGoodRoof;
+	}
+	return ((installationAreaOnGoodRoof * solarInstallation.roofGoodAreaAvgIrradiance + installationAreaOnRemainingRoof * solarInstallation.roofRemainingAreaAvgIrradiance) / installationAreaTotal);
+}
+
+/*
 
 	solarPanel.area
-	solarPanel.electricityPeakPowerFactor
-	solarPanel.electricityInstallationFactor
+	solarInstallation.electricityPeakPowerFactor;
+	solarInstallation.electricityInstallationFactor;
 
 	radiation ?
 
@@ -28,35 +52,8 @@ function SolarElectricityProductionProfile( SolarPanel, constants ) {
 	 säteilymäärä = f( A , sätelyjakauma )
 }
 
-	totalElectricityProduction = solarPanel.photovoltaicArea * solarPanel.photovoltaicPeakPowerFactor * solarPanel.photovoltaicInstallationFactor
+	InstallationAreaAvgIrradiance(SolarInstallation,constants) * solarInstallation.photovoltaicArea * solarInstallation.photovoltaicPeakPowerFactor * solarIstallation.photovoltaicInstallationFactor;
 
-		for(hour=0;hour<8760;hour++) {
-			profile.profile[hour] = 
-		}
+	totalElectricityProduction = solarPanel.photovoltaicArea * 
 
-	return profile;
-}
-
-function PanelAreaTotalIrradiance ( SolarPanel, constants ) {
-
-	var panelAreaOnGoodRoofArea;
-	var panelAreaOnRemainingRoofArea;
-	var roofRemainingAreaAvgIrradiance;
-	var PanelAreaTotalIrradiance;
-
-	if( solarPanel.photovoltaicArea <= solarPanel.roofGoodArea ) {
-		panelAreaOnGoodRoofArea = solarPanel.photovoltaicArea;
-		panelAreaOnRemainingRoofArea = 0;
-	} else {
-		panelAreaOnGoodRoofArea = solarPanel.roofGoodArea;
-		panelAreaOnRemainingRoofArea = solarPanel.photovoltaicArea - panelAreaOnGoodRoofAre;
-	}
-
-	roofRemainingAreaAvgRadiation = ( solarPanel.roofAreaTotalRadiation - ( solarPanel.roofGoodArea * solarPanel.roofGoodAreaAvgRadiation ) ) / ( solarPanel.roofArea - solarPanel.roofGoodArea );
-
-	irradiation = panelAreaOnGoodRoofArea * solarPanel.roofGoodAreaAvgRadiation;
-	irradiation += panelAreaOnRemainingRoofArea * roofRemainingAreaAvgRadiation;
-
-	return irradiation;
-
-}
+*/

@@ -8,20 +8,28 @@
         <link href="css/layout.css" rel="stylesheet" type="text/css" />
         <script src="TestBench.js"></script>
 
-        <script src="Profiles/heatingDemandProfileHelsinkiKaisaniemiReferenceYear.js"></script>
-        <script src="Profiles/simulatedSpaceHeatingDemandOfResidentialReferenceBuilding2014.js"></script>
-        <script src="Profiles/simulatedSpaceHeatingDemandOfResidentialReferenceBuilding2015.js"></script>
-        <script src="Profiles/simulatedSpaceHeatingDemandOfResidentialReferenceBuilding2016.js"></script>
-        <script src="Profiles/simulatedSpaceHeatingDemandOfResidentialReferenceBuilding2017.js"></script>
+        <script src="../profiles/heatingDemandProfileHelsinkiKaisaniemiReferenceYear.js"></script>
+        <script src="../profiles/simulatedSpaceHeatingDemandOfResidentialReferenceBuildingFrom2013To2014.js"></script>
+        <script src="../profiles/simulatedSpaceHeatingDemandOfResidentialReferenceBuildingFrom2015To2017.js"></script>
+        <script src="../profiles/vantaaReferenceYearTotalIrradiationOnHorizontalSurface.js"></script>
+
+        <script src="../tables/referenceYearCalendar.js"></script>
+        <script src="../tables/domesticElectricityConsumptionWeekValues.js"></script>
+        <script src="../tables/domesticElectricityConsumptionHourValues.js"></script>
     
-        <script src="Profile.js"></script>
-        <script src="Constants.js"></script>         
-        <script src="Building.js"></script>
-        <script src="SolarPanel.js"></script>
-         
-        <script src="HotWaterHeatingEnergyProfile.js"></script>
-        <script src="SpaceHeatingEnergyProfile.js"></script>
-        <script src ="ElectricityConsumptionProfile.js"></script>
+        <script src="../Profile.js"></script>
+        <script src="../Constants.js"></script>         
+        <script src="../Building.js"></script>
+        <script src="../SolarInstallation.js"></script>
+        <script src="../System.js"></script> 
+
+        <script src="../HotWaterHeatingEnergyProfile.js"></script>
+        <script src="../SpaceHeatingEnergyProfile.js"></script>
+        <script src="../ElectricityConsumptionProfile.js"></script>
+        <script src="../SolarElectricityProductionProfile.js"></script>
+        <script src="../SystemElectricityBalance.js"></script>
+        <script src="../SystemHotWaterHeatingEnergyBalance.js"></script>
+        <script src="../SystemSpaceHeatingEnergyBalance.js"></script>
 
 
     </head>
@@ -46,6 +54,8 @@
                                     <option value="1">Building - Hot water heating energy</option>
                                     <option value="2">Building - Space heating energy</option>
                                     <option value="3">Building - Electricity consumption</option>
+                                    <option value="4">Solar installation - Electricity production</option>
+                                    <option value="5">System - Electricity balance</option>
                                 </select>
                                 <br>
                             </form>
@@ -56,13 +66,16 @@
                                     <option value="Days">Days</option>
                                     <option value="Months">Months</option>
                                     <option value="Year">Year</option>
+                                    <option value="hourOfDayAvgValueInMonth">Average hours of day in January</option>
+                                    <option value="hourOfDayMaxValueInMonth">Maximum hours of day in January</option>
+                                    <option value="hourOfDayMinValueInMonth">Minimum hours of day in January</option>
                                 </select>
                                 <br>
                             </form>         
                         </div>
                     </div>
                     <div class="panelGraphLine"></div>
-                    <div class="panelGraphHeader bold">Building</div>
+                    <div class="panelGraphHeader bold" id="objectProperties">Object properties</div>
                     <div class="panelGraph">
                         <div id="buildingData"></div>
                     </div>
