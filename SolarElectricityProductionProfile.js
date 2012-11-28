@@ -25,35 +25,3 @@ function InstallationAreaAvgIrradiance(solarInstallation,constants) {
 	}
 	return ((installationAreaOnGoodRoof * solarInstallation.roofGoodAreaAvgIrradiance + installationAreaOnRemainingRoof * solarInstallation.roofRemainingAreaAvgIrradiance) / installationAreaTotal);
 }
-
-/*
-
-	solarPanel.area
-	solarInstallation.electricityPeakPowerFactor;
-	solarInstallation.electricityInstallationFactor;
-
-	radiation ?
-
-	constants
-
-	Aurinkosähkö
-{
-	Paneelin pinta-ala m2
-	Huipputehokerroin = 0.15
-	Säteilymäärä kWh/m2
-	Pmax = Huipputehokerroin * pinta-ala
-	Käyttötilannekerroin 0.75 ( hieman tuulettuva )
-
-	Tuotto = säteilymäärä * ( pinta-ala * Huipputehokerroin )* Käyttötilasnnekerroin / 1 (yksiköiden takia 
-
-	Jos tuotto suurempi kuin kulutus, niin ylimäärä menee hukkaan tai myyntiin.
-
-
-	 säteilymäärä = f( A , sätelyjakauma )
-}
-
-	InstallationAreaAvgIrradiance(SolarInstallation,constants) * solarInstallation.photovoltaicArea * solarInstallation.photovoltaicPeakPowerFactor * solarIstallation.photovoltaicInstallationFactor;
-
-	totalElectricityProduction = solarPanel.photovoltaicArea * 
-
-*/

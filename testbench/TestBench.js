@@ -99,11 +99,62 @@ function Run() {
     		BuildingDataPrinter(solarInstallation, "buildingData");
     		document.getElementById("objectProperties").innerHTML = "Solar installation";
     		break;
-    	case "5":
-    		profile = SystemElectricityBalance( system, constants);
+        case "5":
+            profile = SystemSpaceHeatingEnergyConsumption( system, constants);
+            BuildingDataPrinter(system, "buildingData");
+            document.getElementById("objectProperties").innerHTML = "System";
+            break;
+        case "6":
+            profile = SystemSpaceHeatingEnergyProduction( system, constants);
+            BuildingDataPrinter(system, "buildingData");
+            document.getElementById("objectProperties").innerHTML = "System";
+            break;
+        case "7":
+            profile = SystemSpaceHeatingEnergyBalance( system, constants);
+            BuildingDataPrinter(system, "buildingData");
+            document.getElementById("objectProperties").innerHTML = "System";
+            break;
+        case "8":
+            profile = SystemHotWaterHeatingEnergyConsumption( system, constants);
+            BuildingDataPrinter(system, "buildingData");
+            document.getElementById("objectProperties").innerHTML = "System";
+            break;
+        case "9":
+            profile = SystemHotWaterHeatingEnergyProduction( system, constants);
+            BuildingDataPrinter(system, "buildingData");
+            document.getElementById("objectProperties").innerHTML = "System";
+            break;
+        case "10":
+            profile = SystemHotWaterHeatingEnergyBalance( system, constants);
+            BuildingDataPrinter(system, "buildingData");
+            document.getElementById("objectProperties").innerHTML = "System";
+            break;
+    	case "11":
+    		profile = SystemElectricityConsumption( system, constants);
     		BuildingDataPrinter(system, "buildingData");
     		document.getElementById("objectProperties").innerHTML = "System";
-    		break;	
+    		break;
+        case "12":
+            profile = SystemElectricityProduction( system, constants);
+            BuildingDataPrinter(system, "buildingData");
+            document.getElementById("objectProperties").innerHTML = "System";
+            break;
+        case "13":
+            profile = SystemElectricityBalance( system, constants);
+            BuildingDataPrinter(system, "buildingData");
+            document.getElementById("objectProperties").innerHTML = "System";
+            break;
+        case "14":
+            profile = new Profile();
+            profile.profile = vantaaReferenceYearOutsideTemperature;
+            BuildingDataPrinter(system, "buildingData");
+            document.getElementById("objectProperties").innerHTML = "Outside temperature data";
+            break;
+        case "15":
+            profile = SolarHeatingEnergyProductionProfile(solarInstallation, constants);
+            BuildingDataPrinter(solarInstallation, "buildingData");
+            document.getElementById("objectProperties").innerHTML = "Solar installation";
+            break;
     }
 
 
