@@ -113,22 +113,25 @@ function SolarHeatingEnergyProductionInMonth(solarInstallation, constants, month
 		Qtuotto = 0.0;
 	}
 
-	document.getElementById("debug").innerHTML += "<br>Qtarve: " + Qtarve;
-	document.getElementById("debug").innerHTML += "<br>kuukausi: " + month;	
-	document.getElementById("debug").innerHTML += "<br>Qkerain: " + Qkerain;
-	document.getElementById("debug").innerHTML += "<br>th: " + th;
-	document.getElementById("debug").innerHTML += "<br>te: " + te;
-	document.getElementById("debug").innerHTML += "<br>Ul: " + Ul;
-	document.getElementById("debug").innerHTML += "<br>Uc: " + Uc;
-	document.getElementById("debug").innerHTML += "<br>tref: " + tref;
-	document.getElementById("debug").innerHTML += "<br>dT: " + dT;
-	document.getElementById("debug").innerHTML += "<br>Vtod: " + Vtod;
-	document.getElementById("debug").innerHTML += "<br>ccap: " + ccap;
-	document.getElementById("debug").innerHTML += "<br>X: " + X;
-	document.getElementById("debug").innerHTML += "<br>Y: " + Y;
-	document.getElementById("debug").innerHTML += "<br>Qtuotto: " + Qtuotto;
-//	document.getElementById("debug").innerHTML += "<br>" + Qtarve + ";" + Qtuotto;
-	document.getElementById("debug").innerHTML += "<br>";		
+	var debugEl = document.getElementById("debug");
+	if (debugEl) {
+		debugEl.innerHTML += "<br>Qtarve: " + Qtarve;
+		debugEl.innerHTML += "<br>kuukausi: " + month;	
+		debugEl.innerHTML += "<br>Qkerain: " + Qkerain;
+		debugEl.innerHTML += "<br>th: " + th;
+		debugEl.innerHTML += "<br>te: " + te;
+		debugEl.innerHTML += "<br>Ul: " + Ul;
+		debugEl.innerHTML += "<br>Uc: " + Uc;
+		debugEl.innerHTML += "<br>tref: " + tref;
+		debugEl.innerHTML += "<br>dT: " + dT;
+		debugEl.innerHTML += "<br>Vtod: " + Vtod;
+		debugEl.innerHTML += "<br>ccap: " + ccap;
+		debugEl.innerHTML += "<br>X: " + X;
+		debugEl.innerHTML += "<br>Y: " + Y;
+		debugEl.innerHTML += "<br>Qtuotto: " + Qtuotto;
+	//	debugEl.innerHTML += "<br>" + Qtarve + ";" + Qtuotto;
+		debugEl.innerHTML += "<br>";
+	}
 
 	return Qtuotto;
 } 
