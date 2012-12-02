@@ -1,7 +1,7 @@
 function Building() {
 	
 	// User given parameters
-	this.name 										= "Koetalo";
+	this.buildingName 								= "Building for testing purposes";
 	this.floorArea									= 240; // square meters
 	this.buildingType 								= "1"; // 1:"Asuinrakennus - erillistalo" 2:"Asuinrakennus - uudisrakennus"
 	this.buildingYear 								= 2015;
@@ -9,7 +9,7 @@ function Building() {
 
 	this.heatingSystem 								= "2"; // 1:District heating 2:OilHeating 3:ElectricHeating 4:Other
 	this.spaceHeatingEnergyEstimated 				= false;
-	this.electricityConsumpitonEstimated 			= false;
+	this.electricityConsumptionEstimated 			= false;
 
 	this.oilConsumption 							= 5000; // liters
 	this.districtHeatingConsumption 				= 5000; // kWh
@@ -24,6 +24,7 @@ function Building() {
 	this.electricityConsumptionPeriodStartMonth 	= 1;
 	this.electricityConsumptionPeriodEndYear 		= 2010;
 	this.electricityConsumptionPeriodEndMonth 		= 12;
+	this.electricityConsumptionIncludesSpaceHeating = true;
 
 	// Building specific default values.
 	// User can view and change if necessary.

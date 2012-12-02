@@ -136,4 +136,52 @@ function Profile() {
 		}
 		return min;
 	}
+
+	this.yearPositive = yearPositive;
+	function yearPositive() {
+		var hour;
+		var sum = 0.0;
+		for (hour=0; hour<8760; hour++) {
+			if(this.profile[hour] > 0) {
+				sum += this.profile[hour];
+			}
+		}
+		return sum;
+	}
+
+	this.yearNegative = yearNegative;
+	function yearNegative() {
+		var hour;
+		var sum = 0.0;
+		for (hour=0; hour<8760; hour++) {
+			if(this.profile[hour] < 0) {
+				sum += this.profile[hour];
+			}
+		}
+		return Math.abs(sum);
+	}
+
+	this.yearMin = yearMin;
+	function yearMin() {
+		var hour;
+		var min =this.profile[0];
+		for (hour=1; hour<8760; hour++) {
+			if(this.profile[hour] < min) {
+				min = this.profile[hour];
+			}
+		}
+		return min;
+	}
+
+	this.yearMax = yearMax;
+	function yearMax() {
+		var hour;
+		var max =this.profile[0];
+		for (hour=1; hour<8760; hour++) {
+			if(this.profile[hour] > max) {
+				max = this.profile[hour];
+			}
+		}
+		return max;
+	}
 }

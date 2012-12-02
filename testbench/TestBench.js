@@ -201,5 +201,22 @@ function Run() {
             outputHTML += profile.hourOfDayMinValueInMonth(hour,1,constants) + "<br>";
         }
         document.getElementById("output").innerHTML = outputHTML;
-    }  
+    } 
+    if ( selectorView.value == "yearPositive" ) {
+        var outputHTML = "<br>" + profile.yearPositive();
+        document.getElementById("output").innerHTML = outputHTML;
+    }
+    if ( selectorView.value == "yearNegative" ) {
+        var outputHTML = "<br>" + profile.yearNegative();
+        document.getElementById("output").innerHTML = outputHTML;
+    }
+    if ( selectorView.value == "yearMax" ) {
+        var outputHTML = "<br>" + profile.yearMax();
+        document.getElementById("output").innerHTML = outputHTML;
+    }
+    if ( selectorView.value == "yearMin" ) {
+        var outputHTML = "<br>" + profile.yearMin();
+        document.getElementById("output").innerHTML = outputHTML;
+    }
+
 }

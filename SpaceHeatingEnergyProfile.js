@@ -53,7 +53,7 @@ function SpaceHeatingEnergyProfile( building, constants ) {
 		}
 		// Other heating system or heating energy is estimated
 		if ( building.spaceHeatingEnergyEstimated == true || building.heatingSystem == "4") {
-			normalizedSpaceHeatingDemand = NominalSpaceHeatingDemandEstimate( building, constants ) * ReferenceHeatingDemandHelsinkiKaisaniemi( 2011,1,2011,12 );
+			normalizedSpaceHeatingDemand = NominalSpaceHeatingDemandEstimate( building, constants );
 		}
 		if(normalizedSpaceHeatingDemand < 0) {
 			normalizedSpaceHeatingDemand = 0;
@@ -137,23 +137,14 @@ function ReferenceHeatingDemandHelsinkiKaisaniemi(periodStartYear, periodStartMo
 
 function NominalSpaceHeatingDemandEstimate( building, constants ) {
 	var nominalSpaceHeatingDemand;
-	// The aproximate values below re form Paavo Ingalsuo's Bergheat excel spreadsheet. Original source is unclear. Unit: kWh/(m^3 degreeday year)
-	if ( building.buildingYear >= 2005) {
-        nominalSpaceHeatingDemand = interpolate(2005, 2014, 0.007, 0.005, building.buildingYear);  
-    } else if (building.buildingYear >= 1980) {
-        nominalSpaceHeatingDemand = interpolate(1980, 2005, 0.011, 0.007, building.buildingYear);
-    } else if (building.buildingYear >= 1970) {
-        nominalSpaceHeatingDemand = interpolate(1970, 1980, 0.013, 0.011, building.buildingYear);
-    } else if (building.buildingYear >= 1950) {
-        nominalSpaceHeatingDemand = interpolate(1950, 1970, 0.020, 0.013, building.buildingYear);
+	if ( building.buildingYear >= 2010) {
+        nominalSpaceHeatingDemand = 64; 				// kWh/m2,a  
+    } else if (building.buildingYear >= 2007) {
+        nominalSpaceHeatingDemand = 91; 				// kWh/m2,a  
+    } else if (building.buildingYear >= 2002) {
+        nominalSpaceHeatingDemand = 93; 				// kWh/m2,a					
     } else {
-        nominalSpaceHeatingDemand = 0.020;
+        nominalSpaceHeatingDemand = 125; 				// kWh/m2,a
     }  
-   function interpolate(from, to, valFrom, valTo, at) {
-    	var range       = to - from;
-        var amount      = at - from;
-        var percentage  = amount / range;
-        return valFrom + (valTo - valFrom) * percentage;
-    }
-    return nominalSpaceHeatingDemand * building.floorArea * building.averageRoomHeight;
+    return nominalSpaceHeatingDemand * building.floorArea;
 }

@@ -1,6 +1,7 @@
 function SolarInstallation() {
 	this.photovoltaicArea 					= 20; 		// m2
 	this.thermalArea 						= 8;		// m2
+	this.solarInstallationName				= "";
 
 	// PV panel specific default values. User can view and change if necessary.
 	this.photovoltaicPeakPowerFactor 		= 0.15;
