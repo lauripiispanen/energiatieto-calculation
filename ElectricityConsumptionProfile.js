@@ -3,7 +3,10 @@ function ElectricityConsumptionProfile( building, constants ) {
 	var distributionProfile = new Profile();
 	var hour;
 	var yearlyConsumption;
-	if(building.buildingType == "1" || building.buildingType == "2") {
+	for(hour=0;hour<8760;hour++) {
+		profile.profile[hour] = 0.0;
+	}
+	if((building.buildingType == "1" && building.electricityConsumptionEstimated == true) || building.buildingType == "2") {
 		distributionProfile = ElectricityConsumptionDistributionProfile(building,constants);
 		yearlyConsumption = building.nominalElectricityConsumption * building.floorArea;
 		for(hour=0;hour<8760;hour++) {

@@ -3,9 +3,13 @@ function SpaceHeatingEnergyProfile( building, constants ) {
 	var hour;
 	var consumedSpaceHeatingEnergy;
 	var normalizedSpaceHeatingEnergyDemand;
+	for(hour=0;hour<8760;hour++) {
+		profile.profile[hour] = 0.0;
+	}
 	// "Asuinrakennus"
 	if ( building.buildingType == "1" ) {
-		if ( building.spaceHeatingEnergyEstimated == false ) {
+		normalizedSpaceHeatingDemand = 0.0;
+		if ( building.spaceHeatingEnergyEstimated != true ) {
 			// District heating
 			if ( building.heatingSystem == "1" ) {
 				if ( building.energyConsumptionIncludesWaterHeating == true ) {
