@@ -8,7 +8,7 @@ function Building() {
 	this.numberOfInhabitants 						= 3;
 
 	this.heatingSystem 								= "2"; // 1:District heating 2:OilHeating 3:ElectricHeating 4:Other
-	this.spaceHeatingEnergyEstimated 				= false;
+	this.spaceHeatingEnergyEstimated 				= true;
 	this.electricityConsumptionEstimated 			= false;
 
 	this.oilConsumption 							= 5000; // liters

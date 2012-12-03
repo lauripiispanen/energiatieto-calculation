@@ -9,7 +9,9 @@ function SystemElectricityProduction(system,constants) {
 	for(index=0;index<system.solarInstallation.length;index++) {
 		individualProfile = SolarElectricityProductionProfile(system.solarInstallation[index],constants);
 		for(hour=0;hour<8760;hour++) {
-			systemProfile.profile[hour] += individualProfile.profile[hour];
+			if( !(isNaN(individualProfile.profile[hour])) ) {
+				systemProfile.profile[hour] += individualProfile.profile[hour];
+			}
 		}
 	}
 	return systemProfile;

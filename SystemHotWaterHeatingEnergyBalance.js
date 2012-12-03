@@ -1,31 +1,34 @@
 function SystemHotWaterHeatingEnergyBalance(system,constants) {
 	var hour;
-	var day;
-	var index;
-	systemConsumptionProfile = new Profile();
-	systemProductionProfile = new Profile();
-	systemBalanceProfile = new Profile();
-	elementProfile = new Profile();
+	var index;	
+	var systemProfile = new Profile();
+	var individualProfile = new Profile();
 	for(hour=0;hour<8760;hour++) {
-		systemConsumptionProfile.profile[hour] = 0.0;
+		systemProfile.profile[hour] = 0.0;
 	}
-	for(hour=0;hour<8760;hour++) {
-		systemProductionProfile.profile[hour] = 0.0;
-	}	
 	for(index=0;index<system.building.length;index++) {
-		elementProfile = HotWaterHeatingEnergyProfile(system.building[index],constants);
+		individualProfile = HotWaterHeatingEnergyProfile(system.building[index],constants);
 		for(hour=0;hour<8760;hour++) {
-			systemConsumptionProfile.profile[hour] += elementProfile.profile[hour];
+			if( !(isNaN(individualProfile.profile[hour])) ) {
+				systemProfile.profile[hour] += individualProfile.profile[hour];
+			}			
 		}
 	}
 	for(index=0;index<system.solarInstallation.length;index++) {
-		elementProfile = SolarHeatingEnergyProductionProfile(system.solarInstallation[index],constants);
+		individualProfile = SolarHeatingEnergyProductionProfile(system.solarInstallation[index],constants);
 		for(hour=0;hour<8760;hour++) {
-			systemProductionProfile.profile[hour] += elementProfile.profile[hour];
+			if( !(isNaN(individualProfile.profile[hour])) ) {
+				systemProfile.profile[hour] -= individualProfile.profile[hour];
+			}			
 		}
 	}
-	for(hour=0;hour<8760;hour++) {
-		systemBalanceProfile.profile[hour] = systemConsumptionProfile.profile[hour] - systemProductionProfile.profile[hour];
+	for(index=0;index<system.borehole.length;index++) {
+		individualProfile = BoreholeHotWaterHeatingEnergyProductionProfile(system,system.borehole[index],constants);
+		for(hour=0;hour<8760;hour++) {
+			if( !(isNaN(individualProfile.profile[hour])) ) {
+				systemProfile.profile[hour] -= individualProfile.profile[hour];
+			}			
+		}
 	}
-	return systemBalanceProfile;
+	return systemProfile;
 }

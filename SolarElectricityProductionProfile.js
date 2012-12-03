@@ -10,6 +10,7 @@ function SolarElectricityProductionProfile( solarInstallation, constants ) {
 }
 
 function InstallationAreaAvgIrradiance(solarInstallation,constants) {
+	var installationAreaAvgIrradiance;
 	var installationAreaOnGoodRoof;
 	var installationAreaOnRemainingRoof;
 	var installationAreaTotal = solarInstallation.photovoltaicArea + solarInstallation.thermalArea;
@@ -23,5 +24,10 @@ function InstallationAreaAvgIrradiance(solarInstallation,constants) {
 		installationAreaOnGoodRoof = solarInstallation.roofGoodArea;
 		installationAreaOnRemainingRoof = installationAreaTotal - installationAreaOnGoodRoof;
 	}
-	return ((installationAreaOnGoodRoof * solarInstallation.roofGoodAreaAvgIrradiance + installationAreaOnRemainingRoof * solarInstallation.roofRemainingAreaAvgIrradiance) / installationAreaTotal);
+	if (installationAreaTotal > 0 ) {
+		installationAreaAvgIrradiance = ((installationAreaOnGoodRoof * solarInstallation.roofGoodAreaAvgIrradiance + installationAreaOnRemainingRoof * solarInstallation.roofRemainingAreaAvgIrradiance) / installationAreaTotal);
+	} else {
+		installationAreaAvgIrradiance = 0;
+	}
+	return installationAreaAvgIrradiance;
 }

@@ -11,7 +11,11 @@ function SolarHeatingEnergyProductionProfile(solarInstallation, constants) {
 		irradianceInMonth = irradianceProfile.month(month);
 		for(day=0;day<constants.daysInMonth[month-1];day++) {
 			for(hourOfDay=0;hourOfDay<24;hourOfDay++) {
-				profile.profile[hourOfYear] = (arrayOfMonths[month-1] * irradianceProfile.profile[hourOfYear]) / irradianceInMonth;
+				if(irradianceInMonth > 0) {
+					profile.profile[hourOfYear] = (arrayOfMonths[month-1] * irradianceProfile.profile[hourOfYear]) / irradianceInMonth;
+				} else {
+					profile.profile[hourOfYear] = 0;
+				}
 				hourOfYear++;
 			}
 		}
