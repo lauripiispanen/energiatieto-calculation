@@ -1,8 +1,8 @@
 function SystemElectricityProduction(system,constants) {
 	var hour;
 	var index;
-	systemProfile = new Profile();
-	individualProfile = new Profile();
+	var systemProfile = new Profile();
+	var individualProfile = new Profile();
 	for(hour=0;hour<8760;hour++) {
 		systemProfile.profile[hour] = 0.0;
 	}

@@ -12,7 +12,7 @@ function BoreholeSpaceHeatingEnergyProductionProfile(system,borehole,constants) 
 	var hour;
 	var systemHeatingEnergyConsumption = new Profile();
 	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
-	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyConsumption(system,constants);
+	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
 
 	SystemBoreholeLoadSharing(system,constants);
 
@@ -37,7 +37,7 @@ function BoreholeHotWaterHeatingEnergyProductionProfile(system,borehole,constant
 	var hour;
 	var systemHeatingEnergyConsumption = new Profile();
 	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
-	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyConsumption(system,constants);
+	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
 
 	SystemBoreholeLoadSharing(system,constants);
 
@@ -62,7 +62,7 @@ function BoreholeElectricityConsumptionProfile(system,borehole,constants) {
 	var hour;
 	var systemHeatingEnergyConsumption = new Profile();
 	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
-	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyConsumption(system,constants);
+	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
 
 	var tGroundLoopK = constants.ctokelvin + borehole.tGroundLoop;		// Kelvin	
 	var tOutHotWaterK = constants.ctokelvin + borehole.tOutHotWater; 	// Kelvin
@@ -118,7 +118,7 @@ function SystemBoreholeLoadSharing (system,constants) {
 
 	var systemHeatingEnergyConsumption = new Profile();
 	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
-	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyConsumption(system,constants);
+	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
 
 	for(index=0;index<system.borehole.length;index++) {
 		systemProductionCapacityYear += system.borehole[index].activeDepth * BoreholeCapacityContinuous(system.borehole[index],constants) * 8760;
@@ -190,7 +190,7 @@ function BoreholeSpaceHeatingCopProfile(system,borehole,constants) {
 	var hour;
 	var systemHeatingEnergyConsumption = new Profile();
 	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
-	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyConsumption(system,constants);
+	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
 
 	var tGroundLoopK = constants.ctokelvin + borehole.tGroundLoop;		// Kelvin	
 	var tOutHotWaterK = constants.ctokelvin + borehole.tOutHotWater; 	// Kelvin
@@ -244,7 +244,7 @@ function BoreholeWaterHeatingCopProfile(system,borehole,constants) {
 	var hour;
 	var systemHeatingEnergyConsumption = new Profile();
 	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
-	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyConsumption(system,constants);
+	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
 
 	var tGroundLoopK = constants.ctokelvin + borehole.tGroundLoop;		// Kelvin	
 	var tOutHotWaterK = constants.ctokelvin + borehole.tOutHotWater; 	// Kelvin
