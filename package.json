@@ -1,0 +1,22 @@
+{
+  "name": "energiatieto-calculation",
+  "version": "0.0.1",
+  "description": "ERROR: No README.md file found!",
+  "main": "Borehole.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/lauripiispanen/energiatieto-calculation.git"
+  },
+  "author": "",
+  "license": "GPLv2",
+  "gitHead": "1ba4dd77e046a2c2636e9e433d4fd5ceb79f8e95",
+  "dependencies": {
+    "grunt": "~0.4.1"
+  },
+  "devDependencies": {
+    "grunt-contrib-concat": "~0.3.0"
+  }
+}
