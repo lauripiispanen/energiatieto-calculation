@@ -4,7 +4,7 @@ module.exports = (grunt) ->
         concat:
             dist:
                 files:
-                    'dist/calculations.js': ['lib/**/*.js', '!lib/SystemCost.js']
+                    'dist/calculations.js': ['lib/**/*.js']
 
     grunt.registerTask 'default', ['concat']
 
