@@ -1,643 +1,3 @@
-function Borehole() {
-	
-	// User given parameters
-	this.boreholeName 								= "Borehole for testing";
-	this.activeDepth								= 160;				// meters
-	this.usedForHotWaterHeating						= true;
-	this.electricityAssisted						= false;
-	this.powerDimensioning							= 100;				// %		
-
-	// Bedrock data at borehole location
-	this.bedrockType								= "Ei tiedossa";
-	this.bedrockTypeId								= 0;
-	this.bedrockDepth								= 0;
-	this.bedrockDepthAccuracy						= "Heikko";
-
-	// Boreholespecific default values.
-	// User can view and change if necessary.
-	this.diameter							= 0.13;				// meters
-	this.wallTemp							= 0.5;				// degrees celsius
-	this.tGroundLoop						= -5;				// degrees celsius
-	this.tOutSpaceMax						= 45;				// degrees celsius
-	this.tOutSpaceMaxAt						= -30;				// degrees celsius
-	this.tOutSpaceMin						= 20;				// degrees celsius
-	this.tOutSpaceMinAt						= 20;				// degrees celsius
-	this.tOutHotWater						= 55;				// degrees celsius
-	this.tDiffCondenser						= 10;				// degrees celsius
-	this.tDiffEvaporator					= 5;				// degrees celsius
-	this.efficiencyFactor					= 0.5;				// Adjusting theoretical Carno't process to reality
-
-	// Dimensioning values based on system energy demand
-	this.loadShare;
-	this.maxOutPower;
-}
-// Require:
-// Constants.js
-// Profile.js
-// System.js
-// Borehole.js
-// SystemSpaceHeatingEnergyConsumption.js
-// SystemHotWaterHeatingEnergyConsumption.js
-
-
-function BoreholeSpaceHeatingEnergyProductionProfile(system,borehole,constants) {
-	var profile = new Profile();
-	var hour;
-	var systemHeatingEnergyConsumption = new Profile();
-	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
-	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
-
-	SystemBoreholeLoadSharing(system,constants);
-
-	for(hour=0;hour<8760;hour++) {
-		systemHeatingEnergyConsumption.profile[hour] = systemSpaceHeatingEnergyConsumption.profile[hour] + systemHotWaterHeatingEnergyConsumption.profile[hour];
-	}
-
-	for(hour=0;hour<8760;hour++) {
-		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
-			profile.profile[hour] = borehole.loadShare * systemSpaceHeatingEnergyConsumption.profile[hour];
-		} else {
-			profile.profile[hour] = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemSpaceHeatingEnergyConsumption.profile[hour];
-		}
-	}
-
-	return profile;
-}
-
-
-function BoreholeHotWaterHeatingEnergyProductionProfile(system,borehole,constants) {
-	var profile = new Profile();
-	var hour;
-	var systemHeatingEnergyConsumption = new Profile();
-	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
-	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
-
-	SystemBoreholeLoadSharing(system,constants);
-
-	for(hour=0;hour<8760;hour++) {
-		systemHeatingEnergyConsumption.profile[hour] = systemSpaceHeatingEnergyConsumption.profile[hour] + systemHotWaterHeatingEnergyConsumption.profile[hour];
-	}
-
-	for(hour=0;hour<8760;hour++) {
-		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
-			profile.profile[hour] = borehole.loadShare * systemHotWaterHeatingEnergyConsumption.profile[hour];
-		} else {
-			profile.profile[hour] = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemHotWaterHeatingEnergyConsumption.profile[hour];
-		}
-	}
-
-	return profile;
-}
-
-
-function BoreholeElectricityConsumptionProfile(system,borehole,constants) {
-	var profile = new Profile();
-	var hour;
-	var systemHeatingEnergyConsumption = new Profile();
-	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
-	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
-
-	var tGroundLoopK = constants.ctokelvin + borehole.tGroundLoop;		// Kelvin	
-	var tOutHotWaterK = constants.ctokelvin + borehole.tOutHotWater; 	// Kelvin
-	var tOutSpaceK;														// Kelvin
-	var copSpace;
-	var copHotWater;
-
-	var space;
-	var hotWater;
-
-	SystemBoreholeLoadSharing(system,constants);
-
-	for(hour=0;hour<8760;hour++) {
-		systemHeatingEnergyConsumption.profile[hour] = systemSpaceHeatingEnergyConsumption.profile[hour] + systemHotWaterHeatingEnergyConsumption.profile[hour];
-	}
-
-	for(hour=0;hour<8760;hour++) {
-		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
-			space = borehole.loadShare * systemSpaceHeatingEnergyConsumption.profile[hour];
-		} else {
-			space = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemSpaceHeatingEnergyConsumption.profile[hour];
-		}
-		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
-			hotWater = borehole.loadShare * systemSpaceHeatingEnergyConsumption.profile[hour];
-		} else {
-			hotWater = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemHotWaterHeatingEnergyConsumption.profile[hour];
-		}
-
-		if (constants.vantaaReferenceYearOutsideTemperature[hour] > borehole.tOutSpaceMinAt) {
-			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMin;
-		} else if (constants.vantaaReferenceYearOutsideTemperature[hour] < borehole.tOutSpaceMaxAt) {
-			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMax;
-		} else {
-			tOutSpaceK = (borehole.tOutSpaceMax - borehole.tOutSpaceMin) / (borehole.tOutSpaceMaxAt - borehole.tOutSpaceMinAt);
-			tOutSpaceK *= (constants.vantaaReferenceYearOutsideTemperature[hour] - borehole.tOutSpaceMinAt);
-			tOutSpaceK += borehole.tOutSpaceMin;
-			tOutSpaceK += constants.ctokelvin;
-		}
-		copSpace = borehole.efficiencyFactor * (tOutSpaceK + borehole.tDiffCondenser) / ((tOutSpaceK + borehole.tDiffCondenser) - (tGroundLoopK - borehole.tDiffEvaporator));
-		copHotWater = borehole.efficiencyFactor * (tOutHotWaterK + borehole.tDiffCondenser) / ((tOutHotWaterK + borehole.tDiffCondenser) - (tGroundLoopK - borehole.tDiffEvaporator));
-
-		profile.profile[hour] = space / copSpace + hotWater / copHotWater;
-
-	}
-
-	return profile;
-}
-
-
-function SystemBoreholeLoadSharing (system,constants) {
-
-	var systemProductionCapacityYear = 0.0;
-
-	var systemHeatingEnergyConsumption = new Profile();
-	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
-	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
-
-	for(index=0;index<system.borehole.length;index++) {
-		systemProductionCapacityYear += system.borehole[index].activeDepth * BoreholeCapacityContinuous(system.borehole[index],constants) * 8760;
-	}
-
-	for(hour=0;hour<8760;hour++) {
-		systemHeatingEnergyConsumption.profile[hour] = systemSpaceHeatingEnergyConsumption.profile[hour] + systemHotWaterHeatingEnergyConsumption.profile[hour];
-	}
-
-	if(systemProductionCapacityYear <= systemHeatingEnergyConsumption.year()) {
-		for(index=0;index<system.borehole.length;index++) {
-			system.borehole[index].loadShare = system.borehole[index].activeDepth * BoreholeCapacityContinuous(system.borehole[index],constants) * 8760 / systemHeatingEnergyConsumption.year();
-			system.borehole[index].maxOutPower = (system.borehole[index].powerDimensioning / 100) * system.borehole[index].loadShare * systemHeatingEnergyConsumption.yearMax();
-		}
-	} else {
-		for(index=0;index<system.borehole.length;index++) {
-			system.borehole[index].loadShare = system.borehole[index].activeDepth * BoreholeCapacityContinuous(system.borehole[index],constants) * 8760 / systemProductionCapacityYear;
-			system.borehole[index].maxOutPower = (system.borehole[index].powerDimensioning / 100) * system.borehole[index].loadShare * systemHeatingEnergyConsumption.yearMax();
-		}
-	}
-}
-
-
-function BoreholeCapacityContinuous(borehole,constants) {
-	var capacity;
-	var thermalConductivity = constants.bedrockThermalConductivity[borehole.bedrockTypeId];
-	if(borehole.activeDepth > 60) {
-		capacity = 2 * Math.PI * thermalConductivity * (constants.bedrockUndisturbedTemp - borehole.wallTemp);
-		capacity /= Math.log(borehole.activeDepth / borehole.diameter);
-		capacity /= 1000;
-	} else {
-		capacity = 0;
-	}
-	return capacity;
-}
-
-
-function BoreholeTemperatureOutProfile(system,borehole,constants) {
-	var profile = new Profile();
-	var hour;
-
-	var tGroundLoopK = constants.ctokelvin + borehole.tGroundLoop;		// Kelvin	
-	var tOutHotWaterK = constants.ctokelvin + borehole.tOutHotWater; 	// Kelvin
-	var tOutSpaceK;														// Kelvin
-
-	for(hour=0;hour<8760;hour++) {
-
-		if (constants.vantaaReferenceYearOutsideTemperature[hour] > borehole.tOutSpaceMinAt) {
-			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMin;
-		} else if (constants.vantaaReferenceYearOutsideTemperature[hour] < borehole.tOutSpaceMaxAt) {
-			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMax;
-		} else {
-			tOutSpaceK = (borehole.tOutSpaceMax - borehole.tOutSpaceMin) / (borehole.tOutSpaceMaxAt - borehole.tOutSpaceMinAt);
-			tOutSpaceK *= (constants.vantaaReferenceYearOutsideTemperature[hour] - borehole.tOutSpaceMinAt);
-			tOutSpaceK += borehole.tOutSpaceMin;
-			tOutSpaceK += constants.ctokelvin;
-		}
-
-		profile.profile[hour] = tOutSpaceK - constants.ctokelvin;
-
-	}
-
-	return profile;
-}
-
-
-function BoreholeSpaceHeatingCopProfile(system,borehole,constants) {
-	var profile = new Profile();
-	var hour;
-	var systemHeatingEnergyConsumption = new Profile();
-	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
-	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
-
-	var tGroundLoopK = constants.ctokelvin + borehole.tGroundLoop;		// Kelvin	
-	var tOutHotWaterK = constants.ctokelvin + borehole.tOutHotWater; 	// Kelvin
-	var tOutSpaceK;														// Kelvin
-	var copSpace;
-	var copHotWater;
-
-	var space;
-	var hotWater;
-
-	SystemBoreholeLoadSharing(system,constants);
-
-	for(hour=0;hour<8760;hour++) {
-		systemHeatingEnergyConsumption.profile[hour] = systemSpaceHeatingEnergyConsumption.profile[hour] + systemHotWaterHeatingEnergyConsumption.profile[hour];
-	}
-
-	for(hour=0;hour<8760;hour++) {
-		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
-			space = borehole.loadShare * systemSpaceHeatingEnergyConsumption.profile[hour];
-		} else {
-			space = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemSpaceHeatingEnergyConsumption.profile[hour];
-		}
-		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
-			hotWater = borehole.loadShare * systemSpaceHeatingEnergyConsumption.profile[hour];
-		} else {
-			hotWater = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemHotWaterHeatingEnergyConsumption.profile[hour];
-		}
-
-		if (constants.vantaaReferenceYearOutsideTemperature[hour] > borehole.tOutSpaceMinAt) {
-			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMin;
-		} else if (constants.vantaaReferenceYearOutsideTemperature[hour] < borehole.tOutSpaceMaxAt) {
-			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMax;
-		} else {
-			tOutSpaceK = (borehole.tOutSpaceMax - borehole.tOutSpaceMin) / (borehole.tOutSpaceMaxAt - borehole.tOutSpaceMinAt);
-			tOutSpaceK *= (constants.vantaaReferenceYearOutsideTemperature[hour] - borehole.tOutSpaceMinAt);
-			tOutSpaceK += borehole.tOutSpaceMin;
-			tOutSpaceK += constants.ctokelvin;
-		}
-		copSpace = borehole.efficiencyFactor * (tOutSpaceK + borehole.tDiffCondenser) / ((tOutSpaceK + borehole.tDiffCondenser) - (tGroundLoopK - borehole.tDiffEvaporator));
-		copHotWater = borehole.efficiencyFactor * (tOutHotWaterK + borehole.tDiffCondenser) / ((tOutHotWaterK + borehole.tDiffCondenser) - (tGroundLoopK - borehole.tDiffEvaporator));
-
-		profile.profile[hour] = copSpace;
-
-	}
-
-	return profile;
-}
-
-function BoreholeWaterHeatingCopProfile(system,borehole,constants) {
-	var profile = new Profile();
-	var hour;
-	var systemHeatingEnergyConsumption = new Profile();
-	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
-	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
-
-	var tGroundLoopK = constants.ctokelvin + borehole.tGroundLoop;		// Kelvin	
-	var tOutHotWaterK = constants.ctokelvin + borehole.tOutHotWater; 	// Kelvin
-	var tOutSpaceK;														// Kelvin
-	var copSpace;
-	var copHotWater;
-
-	var space;
-	var hotWater;
-
-	SystemBoreholeLoadSharing(system,constants);
-
-	for(hour=0;hour<8760;hour++) {
-		systemHeatingEnergyConsumption.profile[hour] = systemSpaceHeatingEnergyConsumption.profile[hour] + systemHotWaterHeatingEnergyConsumption.profile[hour];
-	}
-
-	for(hour=0;hour<8760;hour++) {
-		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
-			space = borehole.loadShare * systemSpaceHeatingEnergyConsumption.profile[hour];
-		} else {
-			space = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemSpaceHeatingEnergyConsumption.profile[hour];
-		}
-		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
-			hotWater = borehole.loadShare * systemSpaceHeatingEnergyConsumption.profile[hour];
-		} else {
-			hotWater = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemHotWaterHeatingEnergyConsumption.profile[hour];
-		}
-
-		if (constants.vantaaReferenceYearOutsideTemperature[hour] > borehole.tOutSpaceMinAt) {
-			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMin;
-		} else if (constants.vantaaReferenceYearOutsideTemperature[hour] < borehole.tOutSpaceMaxAt) {
-			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMax;
-		} else {
-			tOutSpaceK = (borehole.tOutSpaceMax - borehole.tOutSpaceMin) / (borehole.tOutSpaceMaxAt - borehole.tOutSpaceMinAt);
-			tOutSpaceK *= (constants.vantaaReferenceYearOutsideTemperature[hour] - borehole.tOutSpaceMinAt);
-			tOutSpaceK += borehole.tOutSpaceMin;
-			tOutSpaceK += constants.ctokelvin;
-		}
-		copSpace = borehole.efficiencyFactor * (tOutSpaceK + borehole.tDiffCondenser) / ((tOutSpaceK + borehole.tDiffCondenser) - (tGroundLoopK - borehole.tDiffEvaporator));
-		copHotWater = borehole.efficiencyFactor * (tOutHotWaterK + borehole.tDiffCondenser) / ((tOutHotWaterK + borehole.tDiffCondenser) - (tGroundLoopK - borehole.tDiffEvaporator));
-
-		profile.profile[hour] = copHotWater;
-
-	}
-
-	return profile;
-}
-
-
-function Building() {
-	
-	// User given parameters
-	this.buildingName 								= "Building for testing purposes";
-	this.floorArea									= 240; // square meters
-	this.buildingType 								= "1"; // 1:"Asuinrakennus - erillistalo" 2:"Asuinrakennus - uudisrakennus"
-	this.buildingYear 								= 2015;
-	this.numberOfInhabitants 						= 3;
-
-	this.heatingSystem 								= "2"; // 1:District heating 2:OilHeating 3:ElectricHeating 4:Other
-	this.spaceHeatingEnergyEstimated 				= true;
-	this.electricityConsumptionEstimated 			= false;
-
-	this.oilConsumption 							= 5000; // liters
-	this.districtHeatingConsumption 				= 5000; // kWh
-	this.energyConsumptionPeriodStartYear 			= 2010;
-	this.energyConsumptionPeriodStartMonth 			= 2;
-	this.energyConsumptionPeriodEndYear 			= 2010;
-	this.energyConsumptionPeriodEndMonth 			= 12;
-	this.energyConsumptionIncludesWaterHeating 		= true;
-
-	this.electricityConsumption 					= 0; // kWh
-	this.electricityConsumptionPeriodStartYear 		= 2010;
-	this.electricityConsumptionPeriodStartMonth 	= 1;
-	this.electricityConsumptionPeriodEndYear 		= 2010;
-	this.electricityConsumptionPeriodEndMonth 		= 12;
-	this.electricityConsumptionIncludesSpaceHeating = true;
-
-	// Building specific default values.
-	// User can view and change if necessary.
-	this.averageRoomHeight 							= 2.8; // meters
-	this.waterConsumptionPerPersonPerDay 			= 60; // liters/(person day)
-
-	this.oilEfficiency 								= 0.87;
-	this.districtHeatingEfficiency 					= 0.97;
-	this.waterHeatingTemperatureDifference			= 50; // Kelvin or Celsius
-	this.waterHeatingLosses 						= 0.89;
-
-	this.nominalElectricityConsumption 				= 58; // kWh/(m2 year)
-}
-
-function Constants() {
-	this.waterThermalCapacity = 4.186; // kJ/(Kelvin kg)
-	this.energyContentOfOil = 10.02; // kWh/liter
-	this.waterDensity = 1.0; // 1.0 kg/liter
-	this.kWhInkJ = 3600; // 1 kWh is 3600 kJ
-
-	this.heatingDemandProfileHelsinkiKaisaniemiReferenceYear = heatingDemandProfileHelsinkiKaisaniemiReferenceYear;
-	this.simulatedSpaceHeatingDemandOfResidentialReferenceBuildingFrom2013To2014 = simulatedSpaceHeatingDemandOfResidentialReferenceBuildingFrom2013To2014;
-	this.simulatedSpaceHeatingDemandOfResidentialReferenceBuildingFrom2015To2017 = simulatedSpaceHeatingDemandOfResidentialReferenceBuildingFrom2015To2017;
-	this.referenceYearCalendar = new ReferenceYearCalendar();
-	this.daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-	this.domesticElectricityConsumptionWeekValues = domesticElectricityConsumptionWeekValues;
-	this.domesticElectricityConsumptionHourValues = domesticElectricityConsumptionHourValues;
-	this.vantaaReferenceYearTotalIrradiationOnHorizontalSurface = vantaaReferenceYearTotalIrradiationOnHorizontalSurface;
-	this.vantaaReferenceYearOutsideTemperature =  vantaaReferenceYearOutsideTemperature;
-	this.ctokelvin = 273.15;
-
-	// bedrock properties
-	this.bedrockThermalConductivity = bedrockThermalConductivity;
-	this.bedrockUndisturbedTemp = 5.6; // degrees celsius
-}
-function ElectricityConsumptionProfile( building, constants ) {
-	var profile = new Profile();
-	var distributionProfile = new Profile();
-	var hour;
-	var yearlyConsumption;
-	for(hour=0;hour<8760;hour++) {
-		profile.profile[hour] = 0.0;
-	}
-	if((building.buildingType == "1" && building.electricityConsumptionEstimated == true) || building.buildingType == "2") {
-		distributionProfile = ElectricityConsumptionDistributionProfile(building,constants);
-		yearlyConsumption = building.nominalElectricityConsumption * building.floorArea;
-		for(hour=0;hour<8760;hour++) {
-			profile.profile[hour] = yearlyConsumption * distributionProfile.profile[hour];
-		}
-	}
-	return profile;
-}
-
-function ElectricityConsumptionDistributionProfile( building, constants ) {
-	var weekValue;
-	var season;
-	var dayType;
-	var day;
-	var hourOfDay;
-	var hourOfYear;
-	var sum;
-	var profile = new Profile();
-	hourOfYear=0;
-	sum=0.0;
-	for (day=0;day<365;day++) {	
-		weekValue = constants.domesticElectricityConsumptionWeekValues [ constants.referenceYearCalendar.week[day] - 1 ];
-		dayType = constants.referenceYearCalendar.dayType[day] - 1;
-		if( constants.referenceYearCalendar.month[day] == 12 || constants.referenceYearCalendar.month[day] == 1 || constants.referenceYearCalendar.month[day] == 2 ) {
-			season = 1;
-		} else {
-			season = 0;
-		}
-		for (hourOfDay=0;hourOfDay<24;hourOfDay++) {
-			profile.profile[hourOfYear] = weekValue * domesticElectricityConsumptionHourValues[season][dayType][hourOfDay]
-			sum+=profile.profile[hourOfYear];
-			hourOfYear++;
-		}
-	}
-	for(hourOfYear=0;hourOfYear<8760;hourOfYear++) {
-		profile.profile[hourOfYear]/=sum;
-	}
-	return profile;
-}
-function HotWaterHeatingEnergyProfile(building,constants) {	
-	var profile = new Profile();
-	var hour;
-	for(hour=0;hour<8760;hour++) {
-		profile.profile[hour] = 0.0;
-	}
-	if(building.buildingType == "1" || building.buildingType == "2") {
-		for(hour=0;hour<8760;hour++) {
-			profile.profile[hour] = (constants.waterThermalCapacity * building.waterHeatingTemperatureDifference / constants.kWhInkJ) * (constants.waterDensity * building.waterConsumptionPerPersonPerDay / 24) * building.numberOfInhabitants / building.waterHeatingLosses;
-		}
-	}
-	return profile;
-}
-function Profile() {
-	
-	this.profile = new Array();
-
-
-	this.year = year;
-	function year() {
-		var hour;
-		var sum = 0.0;
-		for (hour=0; hour<8760; hour++) {
-			sum += this.profile[hour];
-		}
-		return sum;
-	}
-
-
-	this.day = day;
-	function day(day) {
-		var hour;
-		var sum = 0.0;
-		for(hour=24*(day-1);hour<(24*day);hour++) {
-			sum += this.profile[hour];
-		}
-		return sum;
-	}
-
-
-	this.month = month;
-	function month(month) {
-		var hour = 0;
-		var sum = 0.0;
-		var dayFrom = 1;
-		var dayTo;
-		var monthIndex;
-		var dayIndex;
-		var daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-		for(monthIndex=0;monthIndex<(month-1);monthIndex++) {
-			dayFrom += daysInMonth[monthIndex]
-		}
-		dayTo = dayFrom + daysInMonth[month-1];
-		for(dayIndex=dayFrom;dayIndex<dayTo;dayIndex++) {
-			sum += this.day(dayIndex);
-		}
-		return sum;
-	}
-
-
-	this.hour = hour;
-	function hour(hour) {
-		return this.profile[hour];		
-	}
-
-
-	this.period = period;
-	function period(periodStartYear, periodStartMonth, periodEndYear, periodEndMonth) {
-		var year = periodStartYear;
-		var month = periodStartMonth;
-		var sum = 0.0;
-		while( +year <= +periodEndYear && ( (+year < +periodEndYear) || (+month <= +periodEndMonth) ) ) {
-			sum += this.month(month);
-			month++;
-			if( month > 12 ) {
-				month = 1;
-				year++;
-			}
-		}
-		return sum;
-	}
-
-	this.hourOfDayAvgValueInMonth = hourOfDayAvgValueInMonth;
-	function hourOfDayAvgValueInMonth(hourOfDay,month,constants) {
-		var monthIndex;
-		var dayFrom = 0;
-		var dayTo;
-		var dayIndex;
-		var hourOfYear = 0;
-		var sum = 0.0;
-		var n = 0;
-		for(monthIndex=0;monthIndex<(month-1);monthIndex++) {
-			dayFrom += constants.daysInMonth[monthIndex]
-		}
-		dayTo = dayFrom + constants.daysInMonth[month-1];
-		hourOfYear = dayFrom * 24;
-		for(dayIndex=dayFrom;dayIndex<dayTo;dayIndex++) {
-			sum += this.profile[hourOfYear+hourOfDay-1];
-			n++;
-			hourOfYear+=24;
-		}
-		return sum/n;
-	}
-
-	this.hourOfDayMaxValueInMonth = hourOfDayMaxValueInMonth;
-	function hourOfDayMaxValueInMonth(hourOfDay,month,constants) {
-		var monthIndex;
-		var dayFrom = 0;
-		var dayTo;
-		var dayIndex;
-		var hourOfYear = 0;
-		var max;
-		var n = 0;
-		for(monthIndex=0;monthIndex<(month-1);monthIndex++) {
-			dayFrom += constants.daysInMonth[monthIndex]
-		}
-		dayTo = dayFrom + constants.daysInMonth[month-1];
-		hourOfYear = dayFrom * 24;
-		max = this.profile[hourOfYear+hourOfDay-1];
-		for(dayIndex=dayFrom;dayIndex<dayTo;dayIndex++) {
-			if(this.profile[hourOfYear+hourOfDay-1] > max) {
-				max = this.profile[hourOfYear+hourOfDay-1];
-			}
-			hourOfYear+=24;
-		}
-		return max;
-	}
-
-	this.hourOfDayMinValueInMonth = hourOfDayMinValueInMonth;
-	function hourOfDayMinValueInMonth(hourOfDay,month,constants) {
-		var monthIndex;
-		var dayFrom = 0;
-		var dayTo;
-		var dayIndex;
-		var hourOfYear = 0;
-		var min;
-		var n = 0;
-		for(monthIndex=0;monthIndex<(month-1);monthIndex++) {
-			dayFrom += constants.daysInMonth[monthIndex]
-		}
-		dayTo = dayFrom + constants.daysInMonth[month-1];
-		hourOfYear = dayFrom * 24;
-		min = this.profile[hourOfYear+hourOfDay-1];
-		for(dayIndex=dayFrom;dayIndex<dayTo;dayIndex++) {
-			if(this.profile[hourOfYear+hourOfDay-1] < min) {
-				min = this.profile[hourOfYear+hourOfDay-1];
-			}
-			hourOfYear+=24;
-		}
-		return min;
-	}
-
-	this.yearPositive = yearPositive;
-	function yearPositive() {
-		var hour;
-		var sum = 0.0;
-		for (hour=0; hour<8760; hour++) {
-			if(this.profile[hour] > 0) {
-				sum += this.profile[hour];
-			}
-		}
-		return sum;
-	}
-
-	this.yearNegative = yearNegative;
-	function yearNegative() {
-		var hour;
-		var sum = 0.0;
-		for (hour=0; hour<8760; hour++) {
-			if(this.profile[hour] < 0) {
-				sum += this.profile[hour];
-			}
-		}
-		return Math.abs(sum);
-	}
-
-	this.yearMin = yearMin;
-	function yearMin() {
-		var hour;
-		var min =this.profile[0];
-		for (hour=1; hour<8760; hour++) {
-			if(this.profile[hour] < min) {
-				min = this.profile[hour];
-			}
-		}
-		return min;
-	}
-
-	this.yearMax = yearMax;
-	function yearMax() {
-		var hour;
-		var max =this.profile[0];
-		for (hour=1; hour<8760; hour++) {
-			if(this.profile[hour] > max) {
-				max = this.profile[hour];
-			}
-		}
-		return max;
-	}
-}
-
 var heatingDemandProfileHelsinkiKaisaniemiReferenceYear = [
 0.000217553695988,
 0.000222834125503,
@@ -44450,6 +43810,730 @@ var vantaaReferenceYearTotalIrradiationOnHorizontalSurface = [
 0.000000000000
 ];
 
+var bedrockThermalConductivity = [
+2.8,	// default
+3.5,	// Rapakivi
+2.9,	// Kvartsimaasälpäliuske tai -gneissi
+2.9,	// Kiillelisuke tai -gneissi
+3.15,	// Granodioriitti
+3.5,	// Graniitti
+2.4		// Amfiboliitti
+];
+var domesticElectricityConsumptionHourValues = new Array();
+
+domesticElectricityConsumptionHourValues[0] = [  // summer
+[0.50, 0.50, 0.50, 0.50, 0.60, 0.70, 0.90, 0.90, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.10, 1.30, 1.40, 1.50, 1.60, 1.80, 1.50, 1.10, 0.90, 0.60], 
+[0.50, 0.50, 0.50, 0.50, 0.60, 0.70, 0.75, 0.90, 1.00, 1.10, 1.20, 1.20, 1.20, 1.40, 1.50, 1.30, 1.60, 1.70, 1.70, 1.50, 1.10, 1.00, 0.80, 0.50], 
+[0.50, 0.50, 0.50, 0.50, 0.60, 0.70, 0.75, 0.90, 1.00, 1.10, 1.20, 1.10, 1.00, 1.00, 1.00, 1.30, 1.40, 1.60, 1.70, 1.60, 1.20, 1.00, 0.80, 0.50]
+];
+
+domesticElectricityConsumptionHourValues[1] = [ // winter
+[0.60, 0.50, 0.50, 0.50, 0.50, 0.70, 0.85, 0.90, 0.80, 0.85, 0.82, 0.78, 0.75, 0.80, 0.92, 1.05, 1.35, 1.50, 1.70, 1.88, 1.75, 1.35, 1.05, 0.80],
+[0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.70, 0.80, 0.90, 1.10, 1.20, 1.20, 1.25, 1.28, 1.48, 1.75, 2.10, 2.42, 2.48, 2.15, 1.90, 1.40, 1.00, 0.60],
+[0.50, 0.50, 0.50, 0.45, 0.50, 0.60, 0.90, 0.60, 0.90, 1.10, 1.20, 1.25, 1.20, 1.20, 1.15, 1.10, 1.15, 1.40, 1.70, 1.90, 1.65, 1.30, 0.95, 0.65]
+];
+var domesticElectricityConsumptionWeekValues = [
+1.23,
+1.23,
+1.23,
+1.23,
+1.18,
+1.18,
+1.16,
+1.16,
+1.09,
+1.09,
+1.07,
+1.07,
+1.01,
+1.01,
+1.00,
+1.00,
+0.97,
+0.97,
+0.88,
+0.88,
+0.84,
+0.84,
+0.77,
+0.77,
+0.77,
+0.77,
+0.73,
+0.73,
+0.73,
+0.73,
+0.78,
+0.78,
+0.79,
+0.79,
+0.89,
+0.89,
+0.94,
+0.94,
+1.00,
+1.00,
+1.04,
+1.04,
+1.07,
+1.07,
+1.12,
+1.12,
+1.15,
+1.15,
+1.27,
+1.27,
+1.29,
+1.29
+];
+
+function ReferenceYearCalendar() {
+	this.month = 		[  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12 ];
+	this.dayOfMonth = 	[  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31 ];
+	this.week = 		[  1,  1,  1,  1,  1,  1,  1,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,  3,  3,  3,  4,  4,  4,  4,  4,  4,  4,  5,  5,  5,  5,  5,  5,  5,  6,  6,  6,  6,  6,  6,  6,  7,  7,  7,  7,  7,  7,  7,  8,  8,  8,  8,  8,  8,  8,  9,  9,  9,  9,  9,  9,  9, 10, 10, 10, 10, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 12, 12, 12, 12, 12, 12, 12, 13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 17, 17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 19, 19, 19, 19, 19, 19, 19, 20, 20, 20, 20, 20, 20, 20, 21, 21, 21, 21, 21, 21, 21, 22, 22, 22, 22, 22, 22, 22, 23, 23, 23, 23, 23, 23, 23, 24, 24, 24, 24, 24, 24, 24, 25, 25, 25, 25, 25, 25, 25, 26, 26, 26, 26, 26, 26, 26, 27, 27, 27, 27, 27, 27, 27, 28, 28, 28, 28, 28, 28, 28, 29, 29, 29, 29, 29, 29, 29, 30, 30, 30, 30, 30, 30, 30, 31, 31, 31, 31, 31, 31, 31, 32, 32, 32, 32, 32, 32, 32, 33, 33, 33, 33, 33, 33, 33, 34, 34, 34, 34, 34, 34, 34, 35, 35, 35, 35, 35, 35, 35, 36, 36, 36, 36, 36, 36, 36, 37, 37, 37, 37, 37, 37, 37, 38, 38, 38, 38, 38, 38, 38, 39, 39, 39, 39, 39, 39, 39, 40, 40, 40, 40, 40, 40, 40, 41, 41, 41, 41, 41, 41, 41, 42, 42, 42, 42, 42, 42, 42, 43, 43, 43, 43, 43, 43, 43, 44, 44, 44, 44, 44, 44, 44, 45, 45, 45, 45, 45, 45, 45, 46, 46, 46, 46, 46, 46, 46, 47, 47, 47, 47, 47, 47, 47, 48, 48, 48, 48, 48, 48, 48, 49, 49, 49, 49, 49, 49, 49, 50, 50, 50, 50, 50, 50, 50, 51, 51, 51, 51, 51, 51, 51, 52, 52, 52, 52, 52, 52, 52,  1 ];
+	this.dayOfWeek = 	[  1,  2,  3,  4,  5,  6,  7,  1,  2,  3,  4,  5,  6,  7,  1,  2,  3,  4,  5,  6,  7,  1,  2,  3,  4,  5,  6,  7,  1,  2,  3,  4,  5,  6,  7,  1,  2,  3,  4,  5,  6,  7,  1,  2,  3,  4,  5,  6,  7,  1,  2,  3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1 ];
+	this.dayType = 		[  3,  1,  1,  1,  2,  3,  3,  1,  1,  1,  1,  1,  2,  3,  1,  1,  1,  1,  1,  2,  3,  1,  1,  1,  1,  1,  2,  3,  1,  1,  1,  1,  1,  2,  3,  1,  1,  1,  1,  1,  2,  3,  1,  1,  1,  1,  1,  2,  3,  1,  1,  1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 2, 3, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 2, 3, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 2, 3, 3, 1, 1, 2, 3, 2 ];
+}
+function Borehole() {
+	
+	// User given parameters
+	this.boreholeName 								= "Borehole for testing";
+	this.activeDepth								= 160;				// meters
+	this.usedForHotWaterHeating						= true;
+	this.electricityAssisted						= false;
+	this.powerDimensioning							= 100;				// %		
+
+	// Bedrock data at borehole location
+	this.bedrockType								= "Ei tiedossa";
+	this.bedrockTypeId								= 0;
+	this.bedrockDepth								= 0;
+	this.bedrockDepthAccuracy						= "Heikko";
+
+	// Boreholespecific default values.
+	// User can view and change if necessary.
+	this.diameter							= 0.13;				// meters
+	this.wallTemp							= 0.5;				// degrees celsius
+	this.tGroundLoop						= -5;				// degrees celsius
+	this.tOutSpaceMax						= 45;				// degrees celsius
+	this.tOutSpaceMaxAt						= -30;				// degrees celsius
+	this.tOutSpaceMin						= 20;				// degrees celsius
+	this.tOutSpaceMinAt						= 20;				// degrees celsius
+	this.tOutHotWater						= 55;				// degrees celsius
+	this.tDiffCondenser						= 10;				// degrees celsius
+	this.tDiffEvaporator					= 5;				// degrees celsius
+	this.efficiencyFactor					= 0.5;				// Adjusting theoretical Carno't process to reality
+
+	// Dimensioning values based on system energy demand
+	this.loadShare;
+	this.maxOutPower;
+}
+// Require:
+// Constants.js
+// Profile.js
+// System.js
+// Borehole.js
+// SystemSpaceHeatingEnergyConsumption.js
+// SystemHotWaterHeatingEnergyConsumption.js
+
+
+function BoreholeSpaceHeatingEnergyProductionProfile(system,borehole,constants) {
+	var profile = new Profile();
+	var hour;
+	var systemHeatingEnergyConsumption = new Profile();
+	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
+	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
+
+	SystemBoreholeLoadSharing(system,constants);
+
+	for(hour=0;hour<8760;hour++) {
+		systemHeatingEnergyConsumption.profile[hour] = systemSpaceHeatingEnergyConsumption.profile[hour] + systemHotWaterHeatingEnergyConsumption.profile[hour];
+	}
+
+	for(hour=0;hour<8760;hour++) {
+		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
+			profile.profile[hour] = borehole.loadShare * systemSpaceHeatingEnergyConsumption.profile[hour];
+		} else {
+			profile.profile[hour] = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemSpaceHeatingEnergyConsumption.profile[hour];
+		}
+	}
+
+	return profile;
+}
+
+
+function BoreholeHotWaterHeatingEnergyProductionProfile(system,borehole,constants) {
+	var profile = new Profile();
+	var hour;
+	var systemHeatingEnergyConsumption = new Profile();
+	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
+	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
+
+	SystemBoreholeLoadSharing(system,constants);
+
+	for(hour=0;hour<8760;hour++) {
+		systemHeatingEnergyConsumption.profile[hour] = systemSpaceHeatingEnergyConsumption.profile[hour] + systemHotWaterHeatingEnergyConsumption.profile[hour];
+	}
+
+	for(hour=0;hour<8760;hour++) {
+		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
+			profile.profile[hour] = borehole.loadShare * systemHotWaterHeatingEnergyConsumption.profile[hour];
+		} else {
+			profile.profile[hour] = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemHotWaterHeatingEnergyConsumption.profile[hour];
+		}
+	}
+
+	return profile;
+}
+
+
+function BoreholeElectricityConsumptionProfile(system,borehole,constants) {
+	var profile = new Profile();
+	var hour;
+	var systemHeatingEnergyConsumption = new Profile();
+	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
+	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
+
+	var tGroundLoopK = constants.ctokelvin + borehole.tGroundLoop;		// Kelvin	
+	var tOutHotWaterK = constants.ctokelvin + borehole.tOutHotWater; 	// Kelvin
+	var tOutSpaceK;														// Kelvin
+	var copSpace;
+	var copHotWater;
+
+	var space;
+	var hotWater;
+
+	SystemBoreholeLoadSharing(system,constants);
+
+	for(hour=0;hour<8760;hour++) {
+		systemHeatingEnergyConsumption.profile[hour] = systemSpaceHeatingEnergyConsumption.profile[hour] + systemHotWaterHeatingEnergyConsumption.profile[hour];
+	}
+
+	for(hour=0;hour<8760;hour++) {
+		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
+			space = borehole.loadShare * systemSpaceHeatingEnergyConsumption.profile[hour];
+		} else {
+			space = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemSpaceHeatingEnergyConsumption.profile[hour];
+		}
+		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
+			hotWater = borehole.loadShare * systemSpaceHeatingEnergyConsumption.profile[hour];
+		} else {
+			hotWater = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemHotWaterHeatingEnergyConsumption.profile[hour];
+		}
+
+		if (constants.vantaaReferenceYearOutsideTemperature[hour] > borehole.tOutSpaceMinAt) {
+			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMin;
+		} else if (constants.vantaaReferenceYearOutsideTemperature[hour] < borehole.tOutSpaceMaxAt) {
+			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMax;
+		} else {
+			tOutSpaceK = (borehole.tOutSpaceMax - borehole.tOutSpaceMin) / (borehole.tOutSpaceMaxAt - borehole.tOutSpaceMinAt);
+			tOutSpaceK *= (constants.vantaaReferenceYearOutsideTemperature[hour] - borehole.tOutSpaceMinAt);
+			tOutSpaceK += borehole.tOutSpaceMin;
+			tOutSpaceK += constants.ctokelvin;
+		}
+		copSpace = borehole.efficiencyFactor * (tOutSpaceK + borehole.tDiffCondenser) / ((tOutSpaceK + borehole.tDiffCondenser) - (tGroundLoopK - borehole.tDiffEvaporator));
+		copHotWater = borehole.efficiencyFactor * (tOutHotWaterK + borehole.tDiffCondenser) / ((tOutHotWaterK + borehole.tDiffCondenser) - (tGroundLoopK - borehole.tDiffEvaporator));
+
+		profile.profile[hour] = space / copSpace + hotWater / copHotWater;
+
+	}
+
+	return profile;
+}
+
+
+function SystemBoreholeLoadSharing (system,constants) {
+
+	var systemProductionCapacityYear = 0.0;
+
+	var systemHeatingEnergyConsumption = new Profile();
+	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
+	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
+
+	for(index=0;index<system.borehole.length;index++) {
+		systemProductionCapacityYear += system.borehole[index].activeDepth * BoreholeCapacityContinuous(system.borehole[index],constants) * 8760;
+	}
+
+	for(hour=0;hour<8760;hour++) {
+		systemHeatingEnergyConsumption.profile[hour] = systemSpaceHeatingEnergyConsumption.profile[hour] + systemHotWaterHeatingEnergyConsumption.profile[hour];
+	}
+
+	if(systemProductionCapacityYear <= systemHeatingEnergyConsumption.year()) {
+		for(index=0;index<system.borehole.length;index++) {
+			system.borehole[index].loadShare = system.borehole[index].activeDepth * BoreholeCapacityContinuous(system.borehole[index],constants) * 8760 / systemHeatingEnergyConsumption.year();
+			system.borehole[index].maxOutPower = (system.borehole[index].powerDimensioning / 100) * system.borehole[index].loadShare * systemHeatingEnergyConsumption.yearMax();
+		}
+	} else {
+		for(index=0;index<system.borehole.length;index++) {
+			system.borehole[index].loadShare = system.borehole[index].activeDepth * BoreholeCapacityContinuous(system.borehole[index],constants) * 8760 / systemProductionCapacityYear;
+			system.borehole[index].maxOutPower = (system.borehole[index].powerDimensioning / 100) * system.borehole[index].loadShare * systemHeatingEnergyConsumption.yearMax();
+		}
+	}
+}
+
+
+function BoreholeCapacityContinuous(borehole,constants) {
+	var capacity;
+	var thermalConductivity = constants.bedrockThermalConductivity[borehole.bedrockTypeId];
+	if(borehole.activeDepth > 60) {
+		capacity = 2 * Math.PI * thermalConductivity * (constants.bedrockUndisturbedTemp - borehole.wallTemp);
+		capacity /= Math.log(borehole.activeDepth / borehole.diameter);
+		capacity /= 1000;
+	} else {
+		capacity = 0;
+	}
+	return capacity;
+}
+
+
+function BoreholeTemperatureOutProfile(system,borehole,constants) {
+	var profile = new Profile();
+	var hour;
+
+	var tGroundLoopK = constants.ctokelvin + borehole.tGroundLoop;		// Kelvin	
+	var tOutHotWaterK = constants.ctokelvin + borehole.tOutHotWater; 	// Kelvin
+	var tOutSpaceK;														// Kelvin
+
+	for(hour=0;hour<8760;hour++) {
+
+		if (constants.vantaaReferenceYearOutsideTemperature[hour] > borehole.tOutSpaceMinAt) {
+			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMin;
+		} else if (constants.vantaaReferenceYearOutsideTemperature[hour] < borehole.tOutSpaceMaxAt) {
+			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMax;
+		} else {
+			tOutSpaceK = (borehole.tOutSpaceMax - borehole.tOutSpaceMin) / (borehole.tOutSpaceMaxAt - borehole.tOutSpaceMinAt);
+			tOutSpaceK *= (constants.vantaaReferenceYearOutsideTemperature[hour] - borehole.tOutSpaceMinAt);
+			tOutSpaceK += borehole.tOutSpaceMin;
+			tOutSpaceK += constants.ctokelvin;
+		}
+
+		profile.profile[hour] = tOutSpaceK - constants.ctokelvin;
+
+	}
+
+	return profile;
+}
+
+
+function BoreholeSpaceHeatingCopProfile(system,borehole,constants) {
+	var profile = new Profile();
+	var hour;
+	var systemHeatingEnergyConsumption = new Profile();
+	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
+	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
+
+	var tGroundLoopK = constants.ctokelvin + borehole.tGroundLoop;		// Kelvin	
+	var tOutHotWaterK = constants.ctokelvin + borehole.tOutHotWater; 	// Kelvin
+	var tOutSpaceK;														// Kelvin
+	var copSpace;
+	var copHotWater;
+
+	var space;
+	var hotWater;
+
+	SystemBoreholeLoadSharing(system,constants);
+
+	for(hour=0;hour<8760;hour++) {
+		systemHeatingEnergyConsumption.profile[hour] = systemSpaceHeatingEnergyConsumption.profile[hour] + systemHotWaterHeatingEnergyConsumption.profile[hour];
+	}
+
+	for(hour=0;hour<8760;hour++) {
+		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
+			space = borehole.loadShare * systemSpaceHeatingEnergyConsumption.profile[hour];
+		} else {
+			space = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemSpaceHeatingEnergyConsumption.profile[hour];
+		}
+		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
+			hotWater = borehole.loadShare * systemSpaceHeatingEnergyConsumption.profile[hour];
+		} else {
+			hotWater = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemHotWaterHeatingEnergyConsumption.profile[hour];
+		}
+
+		if (constants.vantaaReferenceYearOutsideTemperature[hour] > borehole.tOutSpaceMinAt) {
+			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMin;
+		} else if (constants.vantaaReferenceYearOutsideTemperature[hour] < borehole.tOutSpaceMaxAt) {
+			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMax;
+		} else {
+			tOutSpaceK = (borehole.tOutSpaceMax - borehole.tOutSpaceMin) / (borehole.tOutSpaceMaxAt - borehole.tOutSpaceMinAt);
+			tOutSpaceK *= (constants.vantaaReferenceYearOutsideTemperature[hour] - borehole.tOutSpaceMinAt);
+			tOutSpaceK += borehole.tOutSpaceMin;
+			tOutSpaceK += constants.ctokelvin;
+		}
+		copSpace = borehole.efficiencyFactor * (tOutSpaceK + borehole.tDiffCondenser) / ((tOutSpaceK + borehole.tDiffCondenser) - (tGroundLoopK - borehole.tDiffEvaporator));
+		copHotWater = borehole.efficiencyFactor * (tOutHotWaterK + borehole.tDiffCondenser) / ((tOutHotWaterK + borehole.tDiffCondenser) - (tGroundLoopK - borehole.tDiffEvaporator));
+
+		profile.profile[hour] = copSpace;
+
+	}
+
+	return profile;
+}
+
+function BoreholeWaterHeatingCopProfile(system,borehole,constants) {
+	var profile = new Profile();
+	var hour;
+	var systemHeatingEnergyConsumption = new Profile();
+	var systemSpaceHeatingEnergyConsumption = SystemSpaceHeatingEnergyConsumption(system,constants);
+	var systemHotWaterHeatingEnergyConsumption = SystemHotWaterHeatingEnergyDemandAfterSolar(system,constants);
+
+	var tGroundLoopK = constants.ctokelvin + borehole.tGroundLoop;		// Kelvin	
+	var tOutHotWaterK = constants.ctokelvin + borehole.tOutHotWater; 	// Kelvin
+	var tOutSpaceK;														// Kelvin
+	var copSpace;
+	var copHotWater;
+
+	var space;
+	var hotWater;
+
+	SystemBoreholeLoadSharing(system,constants);
+
+	for(hour=0;hour<8760;hour++) {
+		systemHeatingEnergyConsumption.profile[hour] = systemSpaceHeatingEnergyConsumption.profile[hour] + systemHotWaterHeatingEnergyConsumption.profile[hour];
+	}
+
+	for(hour=0;hour<8760;hour++) {
+		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
+			space = borehole.loadShare * systemSpaceHeatingEnergyConsumption.profile[hour];
+		} else {
+			space = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemSpaceHeatingEnergyConsumption.profile[hour];
+		}
+		if(borehole.loadShare * systemHeatingEnergyConsumption.profile[hour] <= borehole.maxOutPower) {
+			hotWater = borehole.loadShare * systemSpaceHeatingEnergyConsumption.profile[hour];
+		} else {
+			hotWater = (borehole.maxOutPower / (borehole.loadshare * systemHeatingEnergyConsumption.profile[hour])) * systemHotWaterHeatingEnergyConsumption.profile[hour];
+		}
+
+		if (constants.vantaaReferenceYearOutsideTemperature[hour] > borehole.tOutSpaceMinAt) {
+			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMin;
+		} else if (constants.vantaaReferenceYearOutsideTemperature[hour] < borehole.tOutSpaceMaxAt) {
+			tOutSpaceK = constants.ctokelvin + borehole.tOutSpaceMax;
+		} else {
+			tOutSpaceK = (borehole.tOutSpaceMax - borehole.tOutSpaceMin) / (borehole.tOutSpaceMaxAt - borehole.tOutSpaceMinAt);
+			tOutSpaceK *= (constants.vantaaReferenceYearOutsideTemperature[hour] - borehole.tOutSpaceMinAt);
+			tOutSpaceK += borehole.tOutSpaceMin;
+			tOutSpaceK += constants.ctokelvin;
+		}
+		copSpace = borehole.efficiencyFactor * (tOutSpaceK + borehole.tDiffCondenser) / ((tOutSpaceK + borehole.tDiffCondenser) - (tGroundLoopK - borehole.tDiffEvaporator));
+		copHotWater = borehole.efficiencyFactor * (tOutHotWaterK + borehole.tDiffCondenser) / ((tOutHotWaterK + borehole.tDiffCondenser) - (tGroundLoopK - borehole.tDiffEvaporator));
+
+		profile.profile[hour] = copHotWater;
+
+	}
+
+	return profile;
+}
+
+
+function Building() {
+	
+	// User given parameters
+	this.buildingName 								= "Building for testing purposes";
+	this.floorArea									= 240; // square meters
+	this.buildingType 								= "1"; // 1:"Asuinrakennus - erillistalo" 2:"Asuinrakennus - uudisrakennus"
+	this.buildingYear 								= 2015;
+	this.numberOfInhabitants 						= 3;
+
+	this.heatingSystem 								= "2"; // 1:District heating 2:OilHeating 3:ElectricHeating 4:Other
+	this.spaceHeatingEnergyEstimated 				= true;
+	this.electricityConsumptionEstimated 			= false;
+
+	this.oilConsumption 							= 5000; // liters
+	this.districtHeatingConsumption 				= 5000; // kWh
+	this.energyConsumptionPeriodStartYear 			= 2010;
+	this.energyConsumptionPeriodStartMonth 			= 2;
+	this.energyConsumptionPeriodEndYear 			= 2010;
+	this.energyConsumptionPeriodEndMonth 			= 12;
+	this.energyConsumptionIncludesWaterHeating 		= true;
+
+	this.electricityConsumption 					= 0; // kWh
+	this.electricityConsumptionPeriodStartYear 		= 2010;
+	this.electricityConsumptionPeriodStartMonth 	= 1;
+	this.electricityConsumptionPeriodEndYear 		= 2010;
+	this.electricityConsumptionPeriodEndMonth 		= 12;
+	this.electricityConsumptionIncludesSpaceHeating = true;
+
+	// Building specific default values.
+	// User can view and change if necessary.
+	this.averageRoomHeight 							= 2.8; // meters
+	this.waterConsumptionPerPersonPerDay 			= 60; // liters/(person day)
+
+	this.oilEfficiency 								= 0.87;
+	this.districtHeatingEfficiency 					= 0.97;
+	this.waterHeatingTemperatureDifference			= 50; // Kelvin or Celsius
+	this.waterHeatingLosses 						= 0.89;
+
+	this.nominalElectricityConsumption 				= 58; // kWh/(m2 year)
+}
+
+function Constants() {
+	this.waterThermalCapacity = 4.186; // kJ/(Kelvin kg)
+	this.energyContentOfOil = 10.02; // kWh/liter
+	this.waterDensity = 1.0; // 1.0 kg/liter
+	this.kWhInkJ = 3600; // 1 kWh is 3600 kJ
+
+	this.heatingDemandProfileHelsinkiKaisaniemiReferenceYear = heatingDemandProfileHelsinkiKaisaniemiReferenceYear;
+	this.simulatedSpaceHeatingDemandOfResidentialReferenceBuildingFrom2013To2014 = simulatedSpaceHeatingDemandOfResidentialReferenceBuildingFrom2013To2014;
+	this.simulatedSpaceHeatingDemandOfResidentialReferenceBuildingFrom2015To2017 = simulatedSpaceHeatingDemandOfResidentialReferenceBuildingFrom2015To2017;
+	this.referenceYearCalendar = new ReferenceYearCalendar();
+	this.daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+	this.domesticElectricityConsumptionWeekValues = domesticElectricityConsumptionWeekValues;
+	this.domesticElectricityConsumptionHourValues = domesticElectricityConsumptionHourValues;
+	this.vantaaReferenceYearTotalIrradiationOnHorizontalSurface = vantaaReferenceYearTotalIrradiationOnHorizontalSurface;
+	this.vantaaReferenceYearOutsideTemperature =  vantaaReferenceYearOutsideTemperature;
+	this.ctokelvin = 273.15;
+
+	// bedrock properties
+	this.bedrockThermalConductivity = bedrockThermalConductivity;
+	this.bedrockUndisturbedTemp = 5.6; // degrees celsius
+}
+function ElectricityConsumptionProfile( building, constants ) {
+	var profile = new Profile();
+	var distributionProfile = new Profile();
+	var hour;
+	var yearlyConsumption;
+	for(hour=0;hour<8760;hour++) {
+		profile.profile[hour] = 0.0;
+	}
+	if((building.buildingType == "1" && building.electricityConsumptionEstimated == true) || building.buildingType == "2") {
+		distributionProfile = ElectricityConsumptionDistributionProfile(building,constants);
+		yearlyConsumption = building.nominalElectricityConsumption * building.floorArea;
+		for(hour=0;hour<8760;hour++) {
+			profile.profile[hour] = yearlyConsumption * distributionProfile.profile[hour];
+		}
+	}
+	return profile;
+}
+
+function ElectricityConsumptionDistributionProfile( building, constants ) {
+	var weekValue;
+	var season;
+	var dayType;
+	var day;
+	var hourOfDay;
+	var hourOfYear;
+	var sum;
+	var profile = new Profile();
+	hourOfYear=0;
+	sum=0.0;
+	for (day=0;day<365;day++) {	
+		weekValue = constants.domesticElectricityConsumptionWeekValues [ constants.referenceYearCalendar.week[day] - 1 ];
+		dayType = constants.referenceYearCalendar.dayType[day] - 1;
+		if( constants.referenceYearCalendar.month[day] == 12 || constants.referenceYearCalendar.month[day] == 1 || constants.referenceYearCalendar.month[day] == 2 ) {
+			season = 1;
+		} else {
+			season = 0;
+		}
+		for (hourOfDay=0;hourOfDay<24;hourOfDay++) {
+			profile.profile[hourOfYear] = weekValue * domesticElectricityConsumptionHourValues[season][dayType][hourOfDay]
+			sum+=profile.profile[hourOfYear];
+			hourOfYear++;
+		}
+	}
+	for(hourOfYear=0;hourOfYear<8760;hourOfYear++) {
+		profile.profile[hourOfYear]/=sum;
+	}
+	return profile;
+}
+function HotWaterHeatingEnergyProfile(building,constants) {	
+	var profile = new Profile();
+	var hour;
+	for(hour=0;hour<8760;hour++) {
+		profile.profile[hour] = 0.0;
+	}
+	if(building.buildingType == "1" || building.buildingType == "2") {
+		for(hour=0;hour<8760;hour++) {
+			profile.profile[hour] = (constants.waterThermalCapacity * building.waterHeatingTemperatureDifference / constants.kWhInkJ) * (constants.waterDensity * building.waterConsumptionPerPersonPerDay / 24) * building.numberOfInhabitants / building.waterHeatingLosses;
+		}
+	}
+	return profile;
+}
+function Profile() {
+	
+	this.profile = new Array();
+
+
+	this.year = year;
+	function year() {
+		var hour;
+		var sum = 0.0;
+		for (hour=0; hour<8760; hour++) {
+			sum += this.profile[hour];
+		}
+		return sum;
+	}
+
+
+	this.day = day;
+	function day(day) {
+		var hour;
+		var sum = 0.0;
+		for(hour=24*(day-1);hour<(24*day);hour++) {
+			sum += this.profile[hour];
+		}
+		return sum;
+	}
+
+
+	this.month = month;
+	function month(month) {
+		var hour = 0;
+		var sum = 0.0;
+		var dayFrom = 1;
+		var dayTo;
+		var monthIndex;
+		var dayIndex;
+		var daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+		for(monthIndex=0;monthIndex<(month-1);monthIndex++) {
+			dayFrom += daysInMonth[monthIndex]
+		}
+		dayTo = dayFrom + daysInMonth[month-1];
+		for(dayIndex=dayFrom;dayIndex<dayTo;dayIndex++) {
+			sum += this.day(dayIndex);
+		}
+		return sum;
+	}
+
+
+	this.hour = hour;
+	function hour(hour) {
+		return this.profile[hour];		
+	}
+
+
+	this.period = period;
+	function period(periodStartYear, periodStartMonth, periodEndYear, periodEndMonth) {
+		var year = periodStartYear;
+		var month = periodStartMonth;
+		var sum = 0.0;
+		while( +year <= +periodEndYear && ( (+year < +periodEndYear) || (+month <= +periodEndMonth) ) ) {
+			sum += this.month(month);
+			month++;
+			if( month > 12 ) {
+				month = 1;
+				year++;
+			}
+		}
+		return sum;
+	}
+
+	this.hourOfDayAvgValueInMonth = hourOfDayAvgValueInMonth;
+	function hourOfDayAvgValueInMonth(hourOfDay,month,constants) {
+		var monthIndex;
+		var dayFrom = 0;
+		var dayTo;
+		var dayIndex;
+		var hourOfYear = 0;
+		var sum = 0.0;
+		var n = 0;
+		for(monthIndex=0;monthIndex<(month-1);monthIndex++) {
+			dayFrom += constants.daysInMonth[monthIndex]
+		}
+		dayTo = dayFrom + constants.daysInMonth[month-1];
+		hourOfYear = dayFrom * 24;
+		for(dayIndex=dayFrom;dayIndex<dayTo;dayIndex++) {
+			sum += this.profile[hourOfYear+hourOfDay-1];
+			n++;
+			hourOfYear+=24;
+		}
+		return sum/n;
+	}
+
+	this.hourOfDayMaxValueInMonth = hourOfDayMaxValueInMonth;
+	function hourOfDayMaxValueInMonth(hourOfDay,month,constants) {
+		var monthIndex;
+		var dayFrom = 0;
+		var dayTo;
+		var dayIndex;
+		var hourOfYear = 0;
+		var max;
+		var n = 0;
+		for(monthIndex=0;monthIndex<(month-1);monthIndex++) {
+			dayFrom += constants.daysInMonth[monthIndex]
+		}
+		dayTo = dayFrom + constants.daysInMonth[month-1];
+		hourOfYear = dayFrom * 24;
+		max = this.profile[hourOfYear+hourOfDay-1];
+		for(dayIndex=dayFrom;dayIndex<dayTo;dayIndex++) {
+			if(this.profile[hourOfYear+hourOfDay-1] > max) {
+				max = this.profile[hourOfYear+hourOfDay-1];
+			}
+			hourOfYear+=24;
+		}
+		return max;
+	}
+
+	this.hourOfDayMinValueInMonth = hourOfDayMinValueInMonth;
+	function hourOfDayMinValueInMonth(hourOfDay,month,constants) {
+		var monthIndex;
+		var dayFrom = 0;
+		var dayTo;
+		var dayIndex;
+		var hourOfYear = 0;
+		var min;
+		var n = 0;
+		for(monthIndex=0;monthIndex<(month-1);monthIndex++) {
+			dayFrom += constants.daysInMonth[monthIndex]
+		}
+		dayTo = dayFrom + constants.daysInMonth[month-1];
+		hourOfYear = dayFrom * 24;
+		min = this.profile[hourOfYear+hourOfDay-1];
+		for(dayIndex=dayFrom;dayIndex<dayTo;dayIndex++) {
+			if(this.profile[hourOfYear+hourOfDay-1] < min) {
+				min = this.profile[hourOfYear+hourOfDay-1];
+			}
+			hourOfYear+=24;
+		}
+		return min;
+	}
+
+	this.yearPositive = yearPositive;
+	function yearPositive() {
+		var hour;
+		var sum = 0.0;
+		for (hour=0; hour<8760; hour++) {
+			if(this.profile[hour] > 0) {
+				sum += this.profile[hour];
+			}
+		}
+		return sum;
+	}
+
+	this.yearNegative = yearNegative;
+	function yearNegative() {
+		var hour;
+		var sum = 0.0;
+		for (hour=0; hour<8760; hour++) {
+			if(this.profile[hour] < 0) {
+				sum += this.profile[hour];
+			}
+		}
+		return Math.abs(sum);
+	}
+
+	this.yearMin = yearMin;
+	function yearMin() {
+		var hour;
+		var min =this.profile[0];
+		for (hour=1; hour<8760; hour++) {
+			if(this.profile[hour] < min) {
+				min = this.profile[hour];
+			}
+		}
+		return min;
+	}
+
+	this.yearMax = yearMax;
+	function yearMax() {
+		var hour;
+		var max =this.profile[0];
+		for (hour=1; hour<8760; hour++) {
+			if(this.profile[hour] > max) {
+				max = this.profile[hour];
+			}
+		}
+		return max;
+	}
+}
+
 function SolarElectricityProductionProfile( solarInstallation, constants ) {
 	var profile = new Profile();
 	var hour;
@@ -44850,6 +44934,8 @@ function SystemCost() {
       solarEnergySquareMeterPrice: 300,
       solarHeatSquareMeterPrice: 500,
       geoHeatKilowattPrice: 2000,
+      boreholeSystemCost: 3000,
+      boreholeCostPerMeter: 30,
       energySellPrice: 0.04,
       energyBuyPrice: 0.12,
       yearlyMaintenanceCostPercentage: 0.05,
@@ -44863,10 +44949,11 @@ function SystemCost() {
 
   this.getSystemCost = function(system, annualElectricityProduction, annualElectricityConsumption){
     var r = this.getRealInterest();
-    var solarInstallations = system.solarInstallation;
-    var initialInvestment = this.getInitialInvestment(solarInstallations);
+
+    var initialInvestment = this.getInitialInvestment(system);
     var totalSystemCost = this.getTotalSystemCost(annualElectricityProduction, annualElectricityConsumption,
       r, initialInvestment);
+    
     var comparisonCost = this.getComparisonCost(annualElectricityConsumption, r);
     var paybackTime = this.getPaybackTime(totalSystemCost, comparisonCost);
     
@@ -44918,7 +45005,14 @@ function SystemCost() {
     return systemCost;
   };
   
-  this.getInitialInvestment = function(solarInstallations){
+  this.getInitialInvestment = function(system){
+    var solarInstallations = system.solarInstallation;
+    var boreholes = system.borehole;
+    var boreholeCost = _.reduce(system.borehole, function(memo, borehole) {
+      return memo + self.constants.boreholeSystemCost + (borehole.activeDepth * self.constants.boreholeCostPerMeter)
+    }, 0);
+
+
     var solarEnergyArea = _.reduce(solarInstallations, function(solarAreaSum, solarInstallation){
       return solarAreaSum + solarInstallation.photovoltaicArea;
     }, 0);
@@ -44929,7 +45023,7 @@ function SystemCost() {
     }, 0);
     var solarHeatAreaCost = solarHeatArea * self.constants.solarHeatSquareMeterPrice;
     
-    var initialInvestment = solarEnergyAreaCost + solarHeatAreaCost;
+    var initialInvestment = solarEnergyAreaCost + solarHeatAreaCost + boreholeCost;
     return initialInvestment;
   };
 
@@ -45274,88 +45368,4 @@ function SystemSpaceHeatingEnergyProduction (system,constants) {
 		}
 	}
 	return systemProfile;
-}
-var bedrockThermalConductivity = [
-2.8,	// default
-3.5,	// Rapakivi
-2.9,	// Kvartsimaasälpäliuske tai -gneissi
-2.9,	// Kiillelisuke tai -gneissi
-3.15,	// Granodioriitti
-3.5,	// Graniitti
-2.4		// Amfiboliitti
-];
-var domesticElectricityConsumptionHourValues = new Array();
-
-domesticElectricityConsumptionHourValues[0] = [  // summer
-[0.50, 0.50, 0.50, 0.50, 0.60, 0.70, 0.90, 0.90, 1.00, 1.00, 1.00, 1.00, 1.00, 1.00, 1.10, 1.30, 1.40, 1.50, 1.60, 1.80, 1.50, 1.10, 0.90, 0.60], 
-[0.50, 0.50, 0.50, 0.50, 0.60, 0.70, 0.75, 0.90, 1.00, 1.10, 1.20, 1.20, 1.20, 1.40, 1.50, 1.30, 1.60, 1.70, 1.70, 1.50, 1.10, 1.00, 0.80, 0.50], 
-[0.50, 0.50, 0.50, 0.50, 0.60, 0.70, 0.75, 0.90, 1.00, 1.10, 1.20, 1.10, 1.00, 1.00, 1.00, 1.30, 1.40, 1.60, 1.70, 1.60, 1.20, 1.00, 0.80, 0.50]
-];
-
-domesticElectricityConsumptionHourValues[1] = [ // winter
-[0.60, 0.50, 0.50, 0.50, 0.50, 0.70, 0.85, 0.90, 0.80, 0.85, 0.82, 0.78, 0.75, 0.80, 0.92, 1.05, 1.35, 1.50, 1.70, 1.88, 1.75, 1.35, 1.05, 0.80],
-[0.50, 0.50, 0.50, 0.50, 0.50, 0.50, 0.70, 0.80, 0.90, 1.10, 1.20, 1.20, 1.25, 1.28, 1.48, 1.75, 2.10, 2.42, 2.48, 2.15, 1.90, 1.40, 1.00, 0.60],
-[0.50, 0.50, 0.50, 0.45, 0.50, 0.60, 0.90, 0.60, 0.90, 1.10, 1.20, 1.25, 1.20, 1.20, 1.15, 1.10, 1.15, 1.40, 1.70, 1.90, 1.65, 1.30, 0.95, 0.65]
-];
-var domesticElectricityConsumptionWeekValues = [
-1.23,
-1.23,
-1.23,
-1.23,
-1.18,
-1.18,
-1.16,
-1.16,
-1.09,
-1.09,
-1.07,
-1.07,
-1.01,
-1.01,
-1.00,
-1.00,
-0.97,
-0.97,
-0.88,
-0.88,
-0.84,
-0.84,
-0.77,
-0.77,
-0.77,
-0.77,
-0.73,
-0.73,
-0.73,
-0.73,
-0.78,
-0.78,
-0.79,
-0.79,
-0.89,
-0.89,
-0.94,
-0.94,
-1.00,
-1.00,
-1.04,
-1.04,
-1.07,
-1.07,
-1.12,
-1.12,
-1.15,
-1.15,
-1.27,
-1.27,
-1.29,
-1.29
-];
-
-function ReferenceYearCalendar() {
-	this.month = 		[  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  4,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  5,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  6,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12 ];
-	this.dayOfMonth = 	[  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31 ];
-	this.week = 		[  1,  1,  1,  1,  1,  1,  1,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,  3,  3,  3,  4,  4,  4,  4,  4,  4,  4,  5,  5,  5,  5,  5,  5,  5,  6,  6,  6,  6,  6,  6,  6,  7,  7,  7,  7,  7,  7,  7,  8,  8,  8,  8,  8,  8,  8,  9,  9,  9,  9,  9,  9,  9, 10, 10, 10, 10, 10, 10, 10, 11, 11, 11, 11, 11, 11, 11, 12, 12, 12, 12, 12, 12, 12, 13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 14, 15, 15, 15, 15, 15, 15, 15, 16, 16, 16, 16, 16, 16, 16, 17, 17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 19, 19, 19, 19, 19, 19, 19, 20, 20, 20, 20, 20, 20, 20, 21, 21, 21, 21, 21, 21, 21, 22, 22, 22, 22, 22, 22, 22, 23, 23, 23, 23, 23, 23, 23, 24, 24, 24, 24, 24, 24, 24, 25, 25, 25, 25, 25, 25, 25, 26, 26, 26, 26, 26, 26, 26, 27, 27, 27, 27, 27, 27, 27, 28, 28, 28, 28, 28, 28, 28, 29, 29, 29, 29, 29, 29, 29, 30, 30, 30, 30, 30, 30, 30, 31, 31, 31, 31, 31, 31, 31, 32, 32, 32, 32, 32, 32, 32, 33, 33, 33, 33, 33, 33, 33, 34, 34, 34, 34, 34, 34, 34, 35, 35, 35, 35, 35, 35, 35, 36, 36, 36, 36, 36, 36, 36, 37, 37, 37, 37, 37, 37, 37, 38, 38, 38, 38, 38, 38, 38, 39, 39, 39, 39, 39, 39, 39, 40, 40, 40, 40, 40, 40, 40, 41, 41, 41, 41, 41, 41, 41, 42, 42, 42, 42, 42, 42, 42, 43, 43, 43, 43, 43, 43, 43, 44, 44, 44, 44, 44, 44, 44, 45, 45, 45, 45, 45, 45, 45, 46, 46, 46, 46, 46, 46, 46, 47, 47, 47, 47, 47, 47, 47, 48, 48, 48, 48, 48, 48, 48, 49, 49, 49, 49, 49, 49, 49, 50, 50, 50, 50, 50, 50, 50, 51, 51, 51, 51, 51, 51, 51, 52, 52, 52, 52, 52, 52, 52,  1 ];
-	this.dayOfWeek = 	[  1,  2,  3,  4,  5,  6,  7,  1,  2,  3,  4,  5,  6,  7,  1,  2,  3,  4,  5,  6,  7,  1,  2,  3,  4,  5,  6,  7,  1,  2,  3,  4,  5,  6,  7,  1,  2,  3,  4,  5,  6,  7,  1,  2,  3,  4,  5,  6,  7,  1,  2,  3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6, 7, 1 ];
-	this.dayType = 		[  3,  1,  1,  1,  2,  3,  3,  1,  1,  1,  1,  1,  2,  3,  1,  1,  1,  1,  1,  2,  3,  1,  1,  1,  1,  1,  2,  3,  1,  1,  1,  1,  1,  2,  3,  1,  1,  1,  1,  1,  2,  3,  1,  1,  1,  1,  1,  2,  3,  1,  1,  1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 2, 3, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 2, 3, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 1, 1, 1, 1, 1, 2, 3, 2, 3, 3, 1, 1, 2, 3, 2 ];
 }
