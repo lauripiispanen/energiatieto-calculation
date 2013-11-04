@@ -45079,27 +45079,31 @@ function SystemCost() {
     
     return systemCost;
   };
-  
-  this.getInitialInvestment = function(system){
-    var solarInstallations = system.solarInstallation;
-    var boreholes = system.borehole;
-    var boreholeCost = _.reduce(system.borehole, function(memo, borehole) {
-      return memo + self.constants.boreholeSystemCost + (borehole.activeDepth * self.constants.boreholeCostPerMeter)
-    }, 0);
 
-
+  this.getSolarElectricityInstallationCost = function(solarInstallations) {
     var solarEnergyArea = _.reduce(solarInstallations, function(solarAreaSum, solarInstallation){
       return solarAreaSum + solarInstallation.photovoltaicArea;
     }, 0);
-    var solarEnergyAreaCost = solarEnergyArea * self.constants.solarEnergySquareMeterPrice;
-
+    return solarEnergyArea * self.constants.solarEnergySquareMeterPrice;
+  }
+  this.getSolarHeatingInstallationCost = function(solarInstallations) {
     var solarHeatArea = _.reduce(solarInstallations, function(solarAreaSum, solarInstallation){
       return solarAreaSum + solarInstallation.thermalArea;
     }, 0);
-    var solarHeatAreaCost = solarHeatArea * self.constants.solarHeatSquareMeterPrice;
+    return solarHeatArea * self.constants.solarHeatSquareMeterPrice;
+  }
+  this.getBoreholeInstallationCost = function(boreholes) {
+    return _.reduce(boreholes, function(memo, borehole) {
+      return memo + self.constants.boreholeSystemCost + (borehole.activeDepth * self.constants.boreholeCostPerMeter)
+    }, 0);    
+  }
+  
+  this.getInitialInvestment = function(system){
+    var boreholeCost = self.getBoreholeInstallationCost(system.borehole);
+    var solarEnergyAreaCost = self.getSolarElectricityInstallationCost(system.solarInstallation);
+    var solarHeatAreaCost = self.getSolarHeatingInstallationCost(system.solarInstallation);
     
-    var initialInvestment = solarEnergyAreaCost + solarHeatAreaCost + boreholeCost;
-    return initialInvestment;
+    return solarEnergyAreaCost + solarHeatAreaCost + boreholeCost;
   };
 
   this.getAdditionalInvestment = function(year, initialInvestment, r){
