@@ -44959,12 +44959,28 @@ function SystemCost() {
     
     var comparisonCost = this.getComparisonCost(options, r);
     var paybackTime = this.getPaybackTime(totalSystemCost, comparisonCost);
+    var averageSavings = this.getAverageSavings(totalSystemCost, comparisonCost, initialInvestment);
     
-    var systemCost = {totalSystemCost: totalSystemCost,
-                      comparisonCost: comparisonCost,
-                      initialInvestment: initialInvestment,
-                      paybackTime: paybackTime};
+    var systemCost = {
+      totalSystemCost: totalSystemCost,
+      comparisonCost: comparisonCost,
+      initialInvestment: initialInvestment,
+      paybackTime: paybackTime,
+      averageSavings: averageSavings
+    };
     return systemCost;
+  };
+
+  this.getAverageSavings = function(totalSystemCost, comparisonCost, initialInvestment) {
+    var savings = _
+      .chain(totalSystemCost)
+      .zip(comparisonCost)
+      .map(function(it) {
+        var total = it[0].cost - initialInvestment,
+            comparison = it[1].cost;
+        return total - comparison;
+      }).value()[1] / 12;
+    return Math.abs(savings);
   };
   
   this.getTotalSystemCost = function(options, r, initialInvestment){
